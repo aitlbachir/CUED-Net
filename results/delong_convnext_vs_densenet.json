@@ -1,0 +1,27 @@
+{
+  "seeds": [
+    42,
+    123,
+    456
+  ],
+  "n_paired": 1590,
+  "auc_densenet": 0.8763006548984409,
+  "auc_densenet_ci": [
+    0.8440637712740496,
+    0.904679280496568
+  ],
+  "auc_convnext": 0.8919694602351429,
+  "auc_convnext_ci": [
+    0.8621605599263267,
+    0.9168348385772993
+  ],
+  "delta_auc": 0.015668805336702007,
+  "delta_auc_boot_ci": [
+    -0.00554141958564798,
+    0.0364211739666721
+  ],
+  "delong_z": 2.357534056761728,
+  "delong_p": 0.018396767728271035,
+  "verdict": "SIGNIFICANT (ConvNeXt > DenseNet)",
+  "ci_excludes_zero": false
+}

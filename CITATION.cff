@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the following paper."
+title: "CUED-Net: Cross-view Uncertainty-guided Evidential Dual-encoder Network for Breast Mass Classification in Mammography"
+authors:
+  - family-names: "Ait Lbachir"
+    given-names: "Ilhame"
+  - family-names: "Daoudi"
+    given-names: "Imane"
+  - family-names: "Nassih"
+    given-names: "Rym"
+  - family-names: "Samiry"
+    given-names: "Imane"
+preferred-citation:
+  type: article
+  title: "CUED-Net: Cross-view Uncertainty-guided Evidential Dual-encoder Network for Breast Mass Classification in Mammography"
+  authors:
+    - family-names: "Ait Lbachir"
+      given-names: "Ilhame"
+    - family-names: "Daoudi"
+      given-names: "Imane"
+    - family-names: "Nassih"
+      given-names: "Rym"
+    - family-names: "Samiry"
+      given-names: "Imane"
+  journal: "IEEE Journal of Biomedical and Health Informatics"
+  year: 2026
+  notes: "Manuscript ID JBHI-00149-2026 (under review)."

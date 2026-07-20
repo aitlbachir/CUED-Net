@@ -1,0 +1,20 @@
+# CUED-Net dependencies
+# Verified environment: Python 3.11.10, CUDA 12.4, NVIDIA RTX 3090
+#
+# PyTorch was installed from the CUDA 12.4 wheel index:
+#   pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
+# Adjust the CUDA suffix (cu124) to match your local toolkit if different.
+
+torch==2.4.1
+torchvision==0.19.1
+numpy>=1.26,<2.0
+pandas>=2.0
+scikit-learn>=1.3
+scipy>=1.11
+pillow>=10.0
+matplotlib>=3.7
+tqdm>=4.65
+
+# DICOM handling (CMMD external-validation manifest construction only)
+pydicom>=2.4
+openpyxl>=3.1
