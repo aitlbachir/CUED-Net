@@ -1,32 +1,5 @@
 #!/usr/bin/env python
-"""
-train_cv_baselines_edl_tmc.py — 5x5 CV for the evidential baselines
-(Single-view EDL, TMC), using the IDENTICAL fold loader, augmentation,
-schedule, and CSV schema as train_cv.py / train_cv_baselines.py.
-
-Single-view EDL trains ONE encoder on the CC view (img_mlo ignored).
-TMC trains two evidential encoders fused by Dempster's rule at inference.
-
-Both use evidential losses matching CUED-Net's per-view term exactly.
-
-LOCKED CSV SCHEMA:
-    model, seed, fold, patient_id, label, prob_malignant, predicted, uncertainty
-
-USAGE
-  Single-view EDL (25 runs):
-    python train_cv_baselines_edl_tmc.py --method single_view_edl \
-        --seeds 42,123,456,789,2024 --epochs 50 --patience 15 \
-        --output_dir /workspace/cued_net/cv_edl \
-        --pred_csv  /workspace/cued_net/cv_preds/single_view_edl_preds.csv
-
-  TMC (25 runs):
-    python train_cv_baselines_edl_tmc.py --method tmc \
-        --seeds 42,123,456,789,2024 --epochs 50 --patience 15 \
-        --output_dir /workspace/cued_net/cv_tmc \
-        --pred_csv  /workspace/cued_net/cv_preds/tmc_preds.csv
-
-  Smoke ONE fold:  add  --seeds 42 --only_fold 0
-"""
+"""Cross-validation training for TMC and single-view EDL baselines."""
 
 import argparse, csv, json, sys, time
 from pathlib import Path

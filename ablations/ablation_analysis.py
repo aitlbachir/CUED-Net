@@ -1,14 +1,6 @@
 #!/usr/bin/env python
-"""
-ablation_analysis.py — R2.7 component-ablation analysis (GPU-free).
+"""Aggregate and interpret ablation results."""
 
-Compares full CUED-Net vs no_vdl vs no_consistency on:
-  - Discrimination: F1, AUC (expected: barely moves)
-  - Calibration: ECE (15-bin), Brier, NLL (the real R2.7 evidence)
-  - High-discordance subset behaviour (where VDL should matter most)
-
-Reads the three locked CSVs; aligns positionally per (seed,fold) cell.
-"""
 import json
 from pathlib import Path
 import numpy as np
@@ -118,15 +110,14 @@ def main():
     json.dump({"metrics": results, "deltas": deltas}, open(OUT, "w"), indent=2)
     print(f"\n[ok] -> {OUT}")
 
-    # ── R2.7 verdict ──
-    print("\n── R2.7 INTERPRETATION ──")
+    print("\n── ablation interpretation ──")
     dvdl = deltas["w/o VDL"]
     print(f"  Removing VDL: F1 {dvdl['f1']:+.4f} (negligible), "
           f"ECE {dvdl['ece']:+.4f}, Brier {dvdl['brier']:+.4f}, NLL {dvdl['nll']:+.4f}")
     if dvdl['ece'] > 0.002 or dvdl['brier'] > 0.002:
-        print("  -> VDL improves CALIBRATION more than discrimination (supports R2.7 reframe).")
+        print("  -> VDL improves CALIBRATION more than discrimination .")
     else:
-        print("  -> VDL effect on calibration is also small; R2.7 must rest on the "
+        print("  -> VDL effect on calibration is also small; the interpretation must rest on the "
               "flagging/interpretability argument, stated honestly.")
 
 if __name__ == "__main__":

@@ -1,13 +1,6 @@
 #!/usr/bin/env python
-"""
-uncertainty_covariance.py — Pearson r between the 3 uncertainty signals (AE.1, R2.1).
+"""Cross-signal correlations among the uncertainty components."""
 
-Reads the decomposed CUED-Net CSV (u_evid, u_disc, and ensemble u_ens/u_total
-where available). Reports pairwise Pearson r + a correlation-matrix figure.
-Near-zero off-diagonal r supports the 'complementary, not redundant' claim.
-
-GPU: NOT REQUIRED.
-"""
 import argparse, json
 from pathlib import Path
 import numpy as np

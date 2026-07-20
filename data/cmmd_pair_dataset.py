@@ -1,24 +1,4 @@
-"""
-CMMDPairDataset — CMMD External Validation Loader for CUED-Net  (v4)
-====================================================================
-CORRECTED to mirror the EXACT CBIS-DDSM test/val preprocessing used to train
-CUED-Net (see cued_net/data/datasets.py :: CBISDDSMDataset._get_transforms):
-
-    T.Resize((224, 224))
-    T.ToTensor()
-    T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])   # ImageNet
-
-Previous versions used Normalize(0.5, 0.5) — WRONG. That mismatch would have
-conflated a preprocessing artifact with genuine domain shift (the exact silent
-bug flagged in the session summary). Fixed here.
-
-Channel handling: CBIS used PIL .convert('RGB') on grayscale PNGs (→ 3 identical
-channels). We replicate the single DICOM channel to 3 BEFORE ImageNet norm so
-each channel gets its correct per-channel mean/std — matching training exactly.
-
-DICOM concerns (CMMD-specific): VOI-LUT windowing, MONOCHROME1 inversion,
-12/16-bit → 8-bit rescaling. Handled in _dicom_to_uint8.
-"""
+"""CMMD paired-view dataset for external validation."""
 
 import json
 from pathlib import Path
@@ -33,7 +13,6 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as T
 
 
-# ---------------------------------------------------------------------------
 def _dicom_to_uint8(dcm: pydicom.Dataset) -> np.ndarray:
     """DICOM pixel array → uint8 [0,255], windowing + photometric handled."""
     try:
@@ -50,7 +29,6 @@ def _dicom_to_uint8(dcm: pydicom.Dataset) -> np.ndarray:
     return img.astype(np.uint8)
 
 
-# ---------------------------------------------------------------------------
 def cmmd_collate_fn(batch):
     """Stack tensors; keep meta as list[dict] (None-safe)."""
     return {
@@ -61,7 +39,6 @@ def cmmd_collate_fn(batch):
     }
 
 
-# ---------------------------------------------------------------------------
 class CMMDPairDataset(Dataset):
     """
     CMMD CC+MLO breast pairs for CUED-Net external validation.
@@ -141,7 +118,6 @@ class CMMDPairDataset(Dataset):
         }
 
 
-# ---------------------------------------------------------------------------
 def build_cmmd_loader(json_path, batch_size=32, num_workers=4,
                       path_prefix_override=None):
     dataset = CMMDPairDataset(json_path, path_prefix_override=path_prefix_override)
@@ -154,7 +130,6 @@ def build_cmmd_loader(json_path, batch_size=32, num_workers=4,
                       drop_last=False, collate_fn=cmmd_collate_fn)
 
 
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import sys
     jp = sys.argv[1] if len(sys.argv) > 1 else "/workspace/cued_net/cmmd_pairs_full.json"

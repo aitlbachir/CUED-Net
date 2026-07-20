@@ -1,12 +1,6 @@
 #!/usr/bin/env python
-"""
-roc_pr_curves.py — ROC and Precision-Recall curves for all 5 models (R1.8).
+"""ROC and precision-recall curves."""
 
-Pooled 5x5 CV predictions. Reports AUROC and Average Precision (AP) per model,
-draws a two-panel figure (ROC | PR) with all models overlaid.
-
-GPU: NOT REQUIRED.
-"""
 import argparse, glob, json, os
 from pathlib import Path
 import numpy as np

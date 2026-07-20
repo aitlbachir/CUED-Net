@@ -1,6 +1,4 @@
-"""
-Dataset loaders for CUED-Net
-"""
+"""CBIS-DDSM CC+MLO paired-view dataset."""
 
 import os
 import re

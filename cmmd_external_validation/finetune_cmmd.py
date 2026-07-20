@@ -1,40 +1,5 @@
 #!/usr/bin/env python
-"""
-finetune_cmmd.py — Light domain adaptation of CUED-Net to CMMD.
-
-DESIGN (the part reviewers will scrutinize)
--------------------------------------------
-1. PATIENT-LEVEL DISJOINT SPLIT. Train / val / test are split by patient_id,
-   never by pair. A patient's CC+MLO pairs all land in exactly one split. This
-   is the same leakage guarantee used for the CBIS 5-fold CV. We expose the
-   exact patient lists used, so the split is auditable.
-
-2. FROZEN ENCODERS. The two DenseNet-121 encoders are frozen. Only the
-   evidential heads (and, optionally, the fusion parameters) are trained. This
-   is "light fine-tuning": we adapt the decision/calibration layers to the new
-   input distribution rather than relearning features from a small sample. It
-   is the honest answer to "does it generalize with minimal target data".
-
-3. SMALL TARGET FRACTION. By default we fine-tune on 10% of CMMD patients and
-   evaluate on a held-out 70% test set (20% val for early stopping). The test
-   set is touched only once, at the end. No threshold or hyperparameter is
-   selected on the test labels.
-
-4. SAME UQ EVALUATION as evaluate_cmmd.py is reproduced on the held-out test
-   set so the fine-tuned and zero-shot results are directly comparable.
-
-USAGE
------
-    python finetune_cmmd.py \
-        --manifest    /workspace/cued_net/cmmd_pairs_full.json \
-        --ckpt        /workspace/outputs_cued/seed_42/best_model.pt \
-        --models_dir  /workspace/cued_net \
-        --train_frac  0.10 --val_frac 0.20 \
-        --epochs 30 --lr 1e-4 --batch_size 16 --seed 42 \
-        --out_dir     /workspace/cued_net/finetune_out
-
-Run across the same 5 seeds to report mean ± std, mirroring the CBIS protocol.
-"""
+"""Fine-tune CUED-Net on CMMD."""
 
 import argparse
 import json

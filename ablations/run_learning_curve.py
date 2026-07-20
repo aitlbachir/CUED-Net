@@ -1,43 +1,6 @@
 #!/usr/bin/env python
-"""
-run_learning_curve.py — Learning curve (Figure 3) for the JBHI revision.
-                        R2.3, R3.2.
+"""Learning-curve experiment over training-set fractions."""
 
-Shows single-model F1 variance SHRINKS as training-set fraction grows,
-supporting the argument that the earlier wide single-split range (0.633-0.808)
-was a small-sample artifact, not model instability.
-
-DESIGN (agreed):
-  - Single CUED-Net, FINAL config (lambda_vdl=0). NOT the ensemble — the claim
-    is about a lone model's data-limited variance.
-  - Fractions: 10/25/50/75/100% of each fold's TRAINING set.
-  - Budget: 2 seeds {42,123} x 5 folds x 5 fractions = 50 runs.
-  - Option 2 (fixed training effort): epochs scale INVERSELY with fraction
-    (epochs = round(BASE_EPOCHS / fraction)) so every fraction sees ~the same
-    number of gradient updates; data quantity is the only variable. Early
-    stopping (patience=15) kept ON so converged runs stop early — this also
-    neutralises the per-fraction cosine-restart-count difference (most runs
-    stop before late restarts matter). BASE_EPOCHS=40 (full-data convergence
-    point from the backbone runs).
-
-  STRATIFIED SUBSAMPLE: train_pos is subsampled per-fold preserving the
-  malignant/benign ratio, so low fractions don't swing on class imbalance.
-  The val set is NEVER touched (frozen cv_folds.json val splits).
-
-REBUILDS the train loader exactly as cv_dataloaders.py lines 127-141
-(Subset + WeightedRandomSampler + recomputed class weights) on the subset,
-WITHOUT editing the locked dataloader.
-
-ISOLATED: cv_learning_curve/frac_<pct>/seed_S/fold_F/ ; per-fraction pred CSVs
-cv_learning_curve/frac_<pct>_preds.csv. Never touches canonical dirs.
-
-USAGE:
-  # Smoke (frac=1.0, seed=42, fold=0, scaled epochs) — gate first
-  python run_learning_curve.py --smoke
-
-  # Full 50-run sweep
-  python run_learning_curve.py --full
-"""
 import argparse, csv, json, sys, time, functools
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -245,7 +208,7 @@ def run(smoke):
                     "n": int(len(m)),
                 }
         out["per_fraction"] = per_frac
-        print(f"\n{'='*64}\nLEARNING CURVE — per-fraction F1 spread (the R2.3 story)")
+        print(f"\n{'='*64}\nLEARNING CURVE — per-fraction F1 spread")
         print(f"{'='*64}")
         print(f"{'frac':>6} {'n':>3} {'F1 mean':>9} {'F1 std':>8} "
               f"{'F1 min':>8} {'F1 max':>8} {'range':>8}")

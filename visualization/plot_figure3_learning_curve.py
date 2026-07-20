@@ -1,15 +1,5 @@
-"""
-plot_figure3_learning_curve.py  — GPU-FREE. Reads cv_learning_curve/learning_curve_results.json
-and renders Figure 3 for the JBHI revision: single-model F1 vs training-set fraction,
-showing MONOTONIC variance contraction as data grows (the R2.3 answer).
+"""Plot the learning-curve figure."""
 
-Output: figure3_learning_curve.pdf (vector, IEEE single-column 3.5in) + .png preview.
-
-Defensive loader: v7 §2 says the JSON has a `per_fraction` dict keyed by fraction
-with mean/std/min/max/range/auc. We adapt to minor key/spelling variants and fall back
-to the known v7 numbers ONLY if the file is missing (with a printed warning), so the
-script never silently plots stale numbers.
-"""
 import os, sys, json
 import numpy as np
 import matplotlib

@@ -1,42 +1,5 @@
 #!/usr/bin/env python3
-"""
-selective_prediction.py — Selective-prediction comparison for JBHI-00149-2026 revision.
-
-Reads the locked 5×5 CV prediction CSVs and produces:
-  1. Coverage–F1 curves for all methods + CUED-Net decomposed signals
-  2. Coverage–Accuracy curves
-  3. Uncertainty-vs-error AUROC table (Mann-Whitney equivalent)
-  4. LaTeX table: F1@{50,60,70,80,90,100}% coverage + AUROC_error
-  5. Publication-quality matplotlib figure (IEEE color palette)
-
-CSV SCHEMA (locked by train_cv.py / train_cv_baselines*.py):
-  Base (all models):
-      model, seed, fold, patient_id, label, prob_malignant, predicted, uncertainty
-
-  CUED-Net has ADDITIONAL columns (from CUEDNetEnsemble.predict):
-      uncertainty_evidential, uncertainty_ensemble, uncertainty_discordance, uncertainty_total
-
-  uncertainty column semantics:
-      CUED-Net      → uncertainty_total  (composite)
-      TMC           → vacuity (K/S of DS-combined Dirichlet)
-      MC-Dropout    → predictive entropy
-      Deep-Ensemble → predictive entropy
-
-USAGE
------
-# All CSVs in one directory (auto-discovery):
-  python selective_prediction.py --pred_dir /workspace/cued_net/cv_preds \
-      --out /workspace/cued_net/selective_out
-
-# Explicit files:
-  python selective_prediction.py \
-      --pred_csv cued_net_preds.csv mcdropout_preds.csv ensemble_preds.csv \
-               single_view_edl_preds.csv tmc_preds.csv \
-      --out ./selective_out
-
-# With synthetic data for testing (no GPU / no pod needed):
-  python selective_prediction.py --demo --out ./selective_out
-"""
+"""Selective prediction: coverage-F1, AURC/E-AURC, clustered bootstrap."""
 
 import argparse
 import glob
@@ -55,9 +18,7 @@ from scipy import stats
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
 
 
-# ---------------------------------------------------------------------------
 # IEEE journal palette + style constants
-# ---------------------------------------------------------------------------
 IEEE_BLUE   = "#0057A8"
 IEEE_RED    = "#C8102E"
 IEEE_GREEN  = "#1B7E3E"
@@ -84,9 +45,7 @@ STYLE = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Utility: F1 and accuracy at a given coverage
-# ---------------------------------------------------------------------------
 def f1_at_coverage(labels, preds, uncertainty, coverage):
     """Return F1 for the (coverage) fraction of most-confident samples.
     Samples are ranked by ascending uncertainty; the top-confident
@@ -121,9 +80,7 @@ def selective_curve(labels, preds, uncertainty, grid=COVERAGE_GRID):
     return out
 
 
-# ---------------------------------------------------------------------------
 # Risk–coverage curve and AURC / E-AURC
-# ---------------------------------------------------------------------------
 def _trapz(y, x):
     """Trapezoidal integration, compatible with NumPy 1.x and 2.x."""
     fn = getattr(np, "trapezoid", None) or getattr(np, "trapz")
@@ -186,9 +143,7 @@ def eaurc(labels, preds, uncertainty):
     return aurc(labels, preds, uncertainty) - aurc_optimal(labels, preds)
 
 
-# ---------------------------------------------------------------------------
 # Patient-clustered paired bootstrap test on AURC difference
-# ---------------------------------------------------------------------------
 def paired_bootstrap_aurc(
     labels_a, preds_a, unc_a,
     labels_b, preds_b, unc_b,
@@ -258,9 +213,7 @@ def paired_bootstrap_aurc(
     }
 
 
-# ---------------------------------------------------------------------------
 # AUROC of uncertainty vs misclassification (higher uncertainty → error)
-# ---------------------------------------------------------------------------
 def auroc_error(labels, preds, uncertainty):
     """AUROC for the binary task: is this sample misclassified?
     uncertainty is the score; misclassified=1 is the positive class.
@@ -279,9 +232,7 @@ def auroc_error(labels, preds, uncertainty):
     return float(auroc), float(p)
 
 
-# ---------------------------------------------------------------------------
 # Load CSVs and build the method → (labels, preds, uncertainty_dict) map
-# ---------------------------------------------------------------------------
 def load_and_pool(csv_paths):
     """
     Load all prediction CSVs, pool across all 25 (seed, fold) cells,
@@ -343,9 +294,7 @@ def load_and_pool(csv_paths):
     return methods
 
 
-# ---------------------------------------------------------------------------
 # Build the full set of (display_key, model_name, signal_key) triples
-# ---------------------------------------------------------------------------
 def build_method_list(methods):
     """
     Produce an ordered list of (display_key, model_name, signal_key) to plot.
@@ -399,9 +348,7 @@ def build_method_list(methods):
     return order
 
 
-# ---------------------------------------------------------------------------
 # Compute selective curves for all methods
-# ---------------------------------------------------------------------------
 def compute_all_curves(methods, method_list, grid=COVERAGE_GRID):
     """Returns dict[display_key] → {coverage: (f1, acc)}"""
     curves = {}
@@ -414,9 +361,7 @@ def compute_all_curves(methods, method_list, grid=COVERAGE_GRID):
     return curves
 
 
-# ---------------------------------------------------------------------------
 # Compute AUROC-error for all method/signal combos
-# ---------------------------------------------------------------------------
 def compute_auroc_table(methods, method_list):
     """Returns list of dicts for tabulation: AUROC_err, AURC, E-AURC."""
     rows = []
@@ -439,9 +384,7 @@ def compute_auroc_table(methods, method_list):
     return rows
 
 
-# ---------------------------------------------------------------------------
 # Delta F1: gain from selective prediction
-# ---------------------------------------------------------------------------
 def delta_f1(curves, display_key, coverage, baseline_coverage=1.0):
     """F1(coverage) - F1(1.0)"""
     f1_c  = curves[display_key].get(coverage,      (np.nan, np.nan))[0]
@@ -449,9 +392,7 @@ def delta_f1(curves, display_key, coverage, baseline_coverage=1.0):
     return f1_c - f1_b
 
 
-# ---------------------------------------------------------------------------
 # LaTeX table
-# ---------------------------------------------------------------------------
 def build_latex_table(curves, auroc_rows, method_list, grid=COVERAGE_GRID):
     """IEEE booktabs + siunitx table.
 
@@ -546,9 +487,7 @@ def build_latex_table(curves, auroc_rows, method_list, grid=COVERAGE_GRID):
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # Figure: Coverage–F1 (main panel) + Coverage–Acc (inset or panel B)
-# ---------------------------------------------------------------------------
 def plot_selective(curves, method_list, auroc_rows, out_dir, grid=COVERAGE_GRID):
     grid_sorted = sorted(grid)
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
@@ -620,9 +559,7 @@ def plot_selective(curves, method_list, auroc_rows, out_dir, grid=COVERAGE_GRID)
     return pdf_path, png_path
 
 
-# ---------------------------------------------------------------------------
 # JSON results
-# ---------------------------------------------------------------------------
 def build_json_results(curves, auroc_rows, method_list, grid=COVERAGE_GRID):
     out = {"coverage_grid": grid, "methods": {}}
     auroc_lookup = {r["display"]: r for r in auroc_rows}
@@ -649,9 +586,7 @@ def build_json_results(curves, auroc_rows, method_list, grid=COVERAGE_GRID):
     return out
 
 
-# ---------------------------------------------------------------------------
 # Demo mode: generate synthetic data to test the pipeline on CPU
-# ---------------------------------------------------------------------------
 def generate_demo_data(out_dir):
     """Generates synthetic 5×5 CV CSVs that mimic the real schema.
 
@@ -791,9 +726,7 @@ def generate_demo_data(out_dir):
     return csv_paths
 
 
-# ---------------------------------------------------------------------------
 # Build matched arrays for a paired comparison between two (model, signal) refs
-# ---------------------------------------------------------------------------
 def build_aligned(methods, ref_a, ref_b):
     """Return row-aligned (labels, preds_a, unc_a, preds_b, unc_b, patient_ids)
     for two references ref = (model_name, signal_key).
@@ -873,7 +806,7 @@ def run_bootstrap_comparisons(methods, comparisons, n_boot, seed, out_dir):
     """
     print("\n" + "=" * 84)
     print("PAIRED BOOTSTRAP — AURC (lower = better selective prediction)")
-    print("  Δ = AURC(A) − AURC(B);  Δ<0 ⇒ A better.  Patient-clustered, "
+    print("  Δ = AURC(A) − AURC(B);  Δ<0 means A better.  Patient-clustered, "
           f"{n_boot} resamples.")
     print("=" * 84)
     results = []
@@ -908,9 +841,7 @@ def run_bootstrap_comparisons(methods, comparisons, n_boot, seed, out_dir):
     return results
 
 
-# ---------------------------------------------------------------------------
 # Console summary
-# ---------------------------------------------------------------------------
 def print_summary(curves, auroc_rows, method_list, grid=COVERAGE_GRID):
     grid_sorted = sorted(grid)
     print("\n" + "=" * 96)
@@ -937,12 +868,10 @@ def print_summary(curves, auroc_rows, method_list, grid=COVERAGE_GRID):
     print("=" * 96)
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser(
-        description="Selective-prediction comparison for JBHI revision"
+        description="Selective-prediction analysis: coverage-F1, AURC/E-AURC, and patient-clustered bootstrap comparisons"
     )
     ap.add_argument("--pred_dir", default=None,
                     help="Directory to scan for *preds*.csv files")
@@ -1069,7 +998,7 @@ def main():
     else:
         print("\n[!] No valid bootstrap comparisons could be built.")
 
-    print("\n[✓] Done. Outputs in:", args.out)
+    print("\n[ok] Done. Outputs in:", args.out)
 
 
 if __name__ == "__main__":

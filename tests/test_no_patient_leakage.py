@@ -1,7 +1,5 @@
-"""
-test_no_patient_leakage.py
-Verifies the 5-fold CV: HARD patient-disjointness (H1-H4), SOFT balance (S1).
-"""
+"""Assert no patient appears in more than one CV fold."""
+
 import json, argparse
 from collections import defaultdict
 import numpy as np

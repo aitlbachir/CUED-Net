@@ -1,20 +1,5 @@
-"""
-gradcam_uens_case.py — Section IV.E, Case 3 (HIGH u_ens). Light GPU.
+"""Grad-CAM for the maximum ensemble-variance case."""
 
-Pipeline:
-  1. For each fold F: build the 5-seed no_vdl ensemble (CUEDNetEnsemble), run .predict
-     over that fold's VAL set, dump per-sample uncertainty_ensemble (= cross-model
-     var of P(malignant), unbiased). Carry (patient_id, fold, ensemble_var, prob, etc).
-  2. Pick global argmax-u_ens patient across all folds.
-  3. Delta-gate: re-derive that patient's ensemble dict independently and assert the
-     live uncertainty_ensemble reproduces the dumped value to <1e-6.
-  4. Grad-CAM overlay: ensemble .predict is no_grad (no graph) -> visualize the
-     MOST-COMMITTED MEMBER model (max member P(true class)) with a gradient pass on
-     evidence[:,1], same denseblock4 hook as the other two cases. Caption states this.
-  5. Honest framing: if max u_ens is tiny, report AS SUCH (convergence finding).
-
-Writes ONLY to gradcam_cases/ (isolated). Mirrors gradcam_cases.py conventions.
-"""
 import os, sys, json, glob
 import numpy as np
 import torch

@@ -1,43 +1,5 @@
 #!/usr/bin/env python
-"""
-crop_cmmd_breast.py  — Label-blind breast-region cropping for CMMD.
-
-PURPOSE
--------
-CUED-Net was trained on lesion-centered ROI *patches* where the tissue of
-interest fills the 224x224 frame. CMMD images are full-field mammograms in
-which the breast occupies a fraction of the frame and most pixels are air /
-background. Resizing the whole image to 224x224 therefore shrinks the
-diagnostic tissue to a few percent of the input area — a pure input-distribution
-mismatch, independent of any label.
-
-This script closes part of that gap WITHOUT touching any label:
-  1. Read DICOM -> 8-bit grayscale (VOI-LUT, MONOCHROME1 inversion, bit-depth
-     handled the same way as the eval loader).
-  2. Otsu threshold -> binary mask of "tissue vs background".
-  3. Keep the largest connected component (the breast), discard labels strips,
-     scanner artifacts, small bright specks.
-  4. Tight bounding box around that component, expanded by a fixed fractional
-     margin, then a light pectoral-safe square pad so the aspect ratio is sane.
-  5. Save the cropped PNG and write a NEW manifest whose cc_path/mlo_path point
-     at the cropped PNGs.
-
-It is fully label-blind: the only inputs are pixel intensities. The label field
-is copied through verbatim and never consulted in any cropping decision.
-
-Run, then re-run evaluate_cmmd.py UNCHANGED against the new manifest:
-
-    python crop_cmmd_breast.py \
-        --manifest  /workspace/cued_net/cmmd_pairs_full.json \
-        --out_dir   /workspace/cmmd_cropped \
-        --out_manifest /workspace/cued_net/cmmd_pairs_cropped.json
-
-    python evaluate_cmmd.py \
-        --manifest  /workspace/cued_net/cmmd_pairs_cropped.json \
-        --ckpt_glob "/workspace/outputs_cued/seed_*/best_model.pt" \
-        --models_dir /workspace/cued_net \
-        --output    /workspace/cued_net/cmmd_results_cropped.json
-"""
+"""Crop the breast region from CMMD mammograms."""
 
 import argparse
 import json

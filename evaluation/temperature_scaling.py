@@ -1,13 +1,6 @@
 #!/usr/bin/env python
-"""
-temperature_scaling.py — Post-hoc temperature scaling for R2.8 (CBIS-DDSM, 5x5 CV).
+"""Post-hoc temperature scaling."""
 
-Fits a single scalar T per model by minimising NLL on the pooled predictions
-(binary case: logit = log(p/(1-p)), calibrated p = sigmoid(logit / T)).
-Reports ECE/Brier/NLL before and after scaling for all 5 models.
-
-GPU: NOT REQUIRED.
-"""
 import argparse, glob, json, os
 from pathlib import Path
 import numpy as np
@@ -102,10 +95,9 @@ def main():
     json.dump(results, open(Path(args.out) / "temperature_scaling.json", "w"), indent=2)
     print(f"\n[ok] -> {Path(args.out) / 'temperature_scaling.json'}")
 
-    # focused CUED-Net summary line for the rebuttal
     if "CUED-Net" in results:
         c = results["CUED-Net"]
-        print(f"\n── R2.8 sentence ──")
+        print(f"\n── calibration summary ──")
         print(f"  CUED-Net: T={c['T']:.3f}, ECE {c['ece_raw']:.4f} -> "
               f"{c['ece_ts']:.4f} after temperature scaling "
               f"({100*(c['ece_raw']-c['ece_ts'])/c['ece_raw']:.0f}% reduction)")

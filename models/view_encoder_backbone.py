@@ -1,18 +1,5 @@
-"""
-view_encoder_backbone.py — backbone-swappable ViewEncoder for CUED-Net Table III.
+"""Backbone-swappable view encoder used for the backbone ablation."""
 
-Drop-in replacement for models.cued_net.ViewEncoder that accepts a `backbone`
-kwarg. Preserves the EXACT downstream contract of the original:
-  - self.features : the conv feature extractor (named `.features` so the
-                    discriminative-LR and freeze/unfreeze logic in
-                    train_single_model still finds it)
-  - forward() returns the same dict (evidential output + 'features')
-  - AdaptiveAvgPool2d(1) over a (B, C, H, W) feature map  -> flatten -> head
-
-Only the backbone + the head's first Linear(feat_dim, hidden_dim) change.
-Everything downstream (fusion, discordance, triple uncertainty) is dim-invariant
-because it consumes `prob`/`uncertainty`, never the raw feature vector.
-"""
 import torch.nn as nn
 import torchvision.models as tvm
 

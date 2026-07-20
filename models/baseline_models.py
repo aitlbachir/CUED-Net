@@ -1,24 +1,5 @@
 #!/usr/bin/env python
-"""
-baseline_models.py — Conventional-UQ baselines for fair comparison vs CUED-Net.
-
-Design constraints (for methodological symmetry with CUED-Net):
-  - SAME backbone: two DenseNet-121 ViewEncoders (CC, MLO), ImageNet-pretrained.
-  - SAME classifier trunk: 1024->256->64 with BN/ReLU/Dropout(0.4,0.3).
-  - DIFFERENCE: evidential head -> plain Linear(64->2) softmax. No VDL, no
-    uncertainty-weighted fusion. Views are fused by AVERAGING softmax probs
-    (the simplest neutral dual-view fusion; does not borrow CUED-Net novelty).
-
-Provides:
-  - SoftmaxDualView: the shared architecture.
-  - mc_dropout_predict(model, cc, mlo, T): T stochastic passes (dropout ON);
-    returns mean prob + predictive entropy.
-  - ensemble_predict(models, cc, mlo): mean prob over M models + predictive
-    variance.
-
-These reuse the SAME ViewEncoder backbone/classifier weights structure as
-CUED-Net so the only varied factor is the UQ mechanism.
-"""
+"""MC-Dropout and Deep-Ensemble baselines."""
 
 import sys
 import torch

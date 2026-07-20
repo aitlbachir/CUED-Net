@@ -1,38 +1,6 @@
 #!/usr/bin/env python
-"""
-run_backbone_ablation.py — Backbone ablation harness for CUED-Net (Table III).
-                           R3.7, R1.2, AE.4.
+"""Backbone comparison ablation."""
 
-Compares the CUED-Net backbone (DenseNet-121, current) against ResNet-50,
-EfficientNet-B0, ConvNeXt-T. ALL other components fixed; loss is the FINAL
-no_vdl config (lambda_vdl=0). 3 seeds x 5 folds per backbone.
-
-DESIGN (mirrors run_ablations.py exactly):
-  - Does NOT edit any locked training file.
-  - Monkeypatches IN-PROCESS ONLY:
-      (1) models.cued_net.ViewEncoder -> backbone-swapped variant
-          (CUEDNet.__init__ builds ViewEncoder internally, so this swaps both
-           encoders; the variant keeps attribute `.features` so the
-           discriminative-LR + freeze/unfreeze logic in train_single_model
-           still works.)
-      (2) train_cued_net.CUEDNetLoss -> lambda_vdl=0 (FINAL model config;
-          train_single_model otherwise hardcodes lambda_vdl=0.3).
-  - Writes to ISOLATED dirs: cv_backbone/<arch>/fold_F/...  and
-    cv_backbone/<arch>_preds.csv. Never touches cv_cued_net/, cv_preds/,
-    cv_ablation/.
-
-Pred-CSV schema is IDENTICAL to run_ablations.py so stats_tests2.py ingests it
-unchanged. model field = "CUED-Net-<arch>".
-
-USAGE:
-  # Smoke (resnet50, seed=42, fold=0, 3 epochs) — gate before full launch
-  python run_backbone_ablation.py --backbone resnet50 --smoke
-
-  # Full 3x5 per backbone
-  python run_backbone_ablation.py --backbone resnet50 --full
-  python run_backbone_ablation.py --backbone efficientnet_b0 --full
-  python run_backbone_ablation.py --backbone convnext_tiny --full
-"""
 import argparse, csv, json, sys, time, functools
 from pathlib import Path
 import numpy as np

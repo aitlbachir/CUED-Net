@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Extract lesion patches from CBIS-DDSM."""
+
 import argparse, re, sys
 from pathlib import Path
 from collections import defaultdict

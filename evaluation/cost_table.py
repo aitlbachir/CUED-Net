@@ -1,17 +1,6 @@
 #!/usr/bin/env python
-"""
-cost_table.py — Computational cost table for R2.10 / Table V.
+"""Parameter, FLOP, latency and memory comparison."""
 
-Measures per model: parameters (M), GMACs per inference, peak GPU memory (MB),
-inference latency per CC-MLO pair (ms, warm), throughput (pairs/s).
-No retraining — instantiates architectures and times forward passes.
-
-Derived costs:
-  MC-Dropout  = single forward x T (T=50 stochastic passes at inference)
-  Deep-Ensemble = single forward x M (M=5 models)
-
-GPU recommended (RTX 3090). Run on the SAME pod for hardware symmetry.
-"""
 import argparse, json, time, subprocess, sys
 from pathlib import Path
 import numpy as np

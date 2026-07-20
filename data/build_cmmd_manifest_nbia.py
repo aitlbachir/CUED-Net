@@ -1,26 +1,5 @@
 #!/usr/bin/env python3
-"""
-build_cmmd_manifest_nbia.py
-===========================
-CC+MLO lesion-pair manifest for the FULL CMMD external-validation set, as
-downloaded from TCIA/NBIA (flat, UID-named series directories).
-
-Differs from the Kaggle-mirror version ONLY in data discovery:
-  - iterates  cmmd_full/<SeriesUID>/*.dcm   (not  CMMD/D1-XXXX/...)
-  - patient_id is read from DICOM (0010,0020) PatientID  (= D1-/D2- ID),
-    NOT from the directory name (which is a SeriesInstanceUID)
-  - groups by (patient_id, laterality) across ALL files in ALL series dirs,
-    so a bilateral patient split across series still assembles correctly
-
-Identical to the validated version:
-  view   : (0054,0220) ViewCodeSequence CodeValue  399162004=CC / 399368009=MLO
-  lat    : (0020,0062) ImageLaterality  R/L
-  label  : clinical xlsx join on (ID1, LeftRight)  Malignant->1 / Benign->0
-  pair   : emitted only when both CC and MLO exist for that breast
-  report : full drop accounting + reconciliation assertion + hard invariants
-
-CMMD is EXTERNAL VALIDATION ONLY — never enters CV/training splits.
-"""
+"""Build the CMMD CC+MLO pair manifest (raw TCIA/NBIA layout)."""
 
 import os
 import glob

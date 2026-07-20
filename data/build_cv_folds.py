@@ -1,14 +1,5 @@
-"""
-build_cv_folds.py
-5-fold StratifiedGroupKFold over CUED-Net training pairs, grouped by patient.
+"""Generate patient-grouped stratified CV folds."""
 
-Recovered semantics (from data/datasets.py):
-  sample  = CC+MLO lesion-pair (patient_id, laterality, abnormality_id)
-  label   = MALIGNANT->1, BENIGN->0 (BWC->0), uncertain dropped
-  group   = patient_id (leakage guarantee)
-  stratify= per-patient label = max over that patient's pair labels
-Pairs are read from CBISDDSMDataset.pairs so they are identical to the run.
-"""
 import json, argparse
 from pathlib import Path
 from collections import defaultdict

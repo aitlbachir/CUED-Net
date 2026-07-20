@@ -1,35 +1,6 @@
 #!/usr/bin/env python
-"""
-delong_convnext_vs_densenet.py — Settle whether ConvNeXt-T's backbone-ablation
-AUC advantage over DenseNet-121 (the CUED-Net backbone) is statistically real
-or within noise. R3.7 follow-up.
+"""DeLong test comparing ConvNeXt and DenseNet backbones."""
 
-Reuses stats_tests2.py machinery DIRECTLY (no reimplementation):
-  - load_models()  : LOCKED schema loader
-  - align_pair()   : (seed, fold, within-cell row-index) join + patient assert
-  - delong_test()  : paired AUC comparison
-  - bca_auc_ci()   : patient-clustered BCa bootstrap 95% CI
-  - auc_score()    : pooled AUC
-
-FAIRNESS CONTROL (critical):
-  ConvNeXt ablation = 3 seeds {42,123,456}. DenseNet no_vdl main = 5 seeds.
-  We SUBSET DenseNet to the same 3 seeds so the comparison is 3-seed vs 3-seed
-  and seed-count is not confounded with backbone. Both are on the identical
-  frozen cv_folds.json, so the per-(seed,fold) val sets align exactly.
-
-RECONCILIATION GATE:
-  align_pair() asserts patient_id agreement row-by-row; if val iteration order
-  ever diverged it raises rather than silently misaligning. We also assert the
-  two models cover the SAME (seed,fold) cells and the SAME row counts per cell
-  before testing — silent data loss is the primary risk.
-
-OUTPUT:
-  Prints ΔAUC (ConvNeXt − DenseNet), DeLong p, and BCa 95% CI for each model's
-  pooled AUC + a bootstrap CI on the difference. Writes a small JSON.
-
-USAGE:
-  python delong_convnext_vs_densenet.py
-"""
 import sys, json
 from pathlib import Path
 import numpy as np

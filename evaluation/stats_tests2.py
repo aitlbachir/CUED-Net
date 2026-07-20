@@ -1,49 +1,5 @@
 #!/usr/bin/env python
-"""
-stats_tests.py — Statistical comparison layer for the JBHI revision (R3.5).
-
-Consumes the LOCKED prediction-CSV schema written by train_cv.py and
-train_cv_baselines.py:
-
-    model, seed, fold, patient_id, label, prob_malignant, predicted, uncertainty
-
-All models are evaluated on the IDENTICAL 5x5 CV folds, so every comparison
-is PAIRED at the sample level (same patient, same seed, same fold). This is
-what makes DeLong (AUC) and McNemar (F1/accuracy) valid and is the rigour the
-reviewers asked for.
-
-Pooling convention
-------------------
-Predictions are pooled across all 25 (seed, fold) cells into one prediction
-vector per model, aligned by the key (seed, fold, patient_id). Pairwise tests
-then operate on these aligned vectors. Per-seed means + std (ddof=1) are also
-reported to mirror cv_results.json and feed Table I/II.
-
-Tests
------
-  * DeLong       : paired AUC comparison (CUED-Net vs each baseline)
-  * McNemar      : paired correctness comparison (exact binomial; F1/acc proxy)
-  * Wilcoxon     : signed-rank across the 5 per-seed AUC means (distribution-free)
-  * BCa bootstrap: 95% CI on each model's pooled AUC (1000 resamples, patient-
-                   clustered resampling to respect non-independence)
-  * Holm-Bonferroni: family-wise correction across the baseline comparisons
-
-Outputs
--------
-  <out>/stats_results.json   full numeric results
-  <out>/table_comparison.tex IEEE (siunitx+booktabs) Table II body, paste-ready
-
-USAGE
-  python stats_tests.py \
-      --pred_dir /workspace/cued_net/cv_preds \
-      --reference CUED-Net \
-      --out /workspace/cued_net/stats_out
-
-  # Explicit file list instead of a directory scan:
-  python stats_tests.py \
-      --pred_csv cued_net_preds.csv mcdropout_preds.csv ensemble_preds.csv \
-      --reference CUED-Net --out ./stats_out
-"""
+"""Statistical tests: DeLong, McNemar, bootstrap confidence intervals."""
 
 import argparse
 import glob
@@ -352,7 +308,6 @@ def main():
         comparisons[name]["mcnemar_p_holm"] = padj
         comparisons[name]["mcnemar_sig_holm"] = bool(rej)
 
-    # ---- significance summary (drives the rebuttal text) ----
     print("\n" + "=" * 78)
     print(f"SIGNIFICANCE SUMMARY  (reference = {args.reference})")
     print("  AUC: DeLong + Holm   |   F1/correctness: McNemar (exact binomial) + Holm")

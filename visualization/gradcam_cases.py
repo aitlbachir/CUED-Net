@@ -1,38 +1,6 @@
 #!/usr/bin/env python
-"""
-gradcam_cases.py — Grad-CAM uncertainty case studies for CUED-Net (Section IV.E).
-                   R1.7, R2.9, R3.6.
+"""Grad-CAM uncertainty case studies (per-view saliency overlays)."""
 
-Produces case-study panels, one per uncertainty SOURCE, on the FINAL no_vdl
-model. Each panel: CC + MLO ROI with Grad-CAM overlay (per view), the
-per-component uncertainty values (u_evid, u_disc, u_combined), prediction vs
-truth, and a suggested clinical action.
-
-THIS SESSION (runnable from the existing decomposed CSV):
-  - Case 1: HIGH u_evid  (model lacks evidence though views may agree)
-  - Case 2: HIGH u_disc  (CC/MLO disagree — directly answers R3.6)
-  (The ensemble u_ens case is deferred — u_ens is ~0.2% of total per Table III
-   and needs an ensemble inference pass; add it in a follow-up session.)
-
-CASE SELECTION: from selective_preds_novdl/cued_net_preds_decomposed.csv, pick
-the val sample MAXIMISING each component. The CSV row carries (patient_id, seed,
-fold); we load THAT (seed,fold) no_vdl checkpoint and locate the patient in that
-fold's val set, so displayed uncertainties reproduce the CSV exactly (Δ-checked).
-
-GRAD-CAM: target layer = encoder.features.denseblock4 (last conv block; norm5
-after it is BatchNorm, not a conv map). Gradient target = malignant-class
-evidence  evidence[:,1]  of the relevant view's evidential head (the softplus
-evidence that drives the Dirichlet posterior). Computed independently per view.
-
-CHECKPOINT: cv_ablation/no_vdl/fold_F/seed_S/best_model.pt, dict with
-'model_state_dict'. lambda_vdl=0 is irrelevant at inference (loss-only term).
-
-OUTPUT: gradcam_cases/case_<source>_<pid>.png  + a summary JSON.
-
-USAGE:
-  python gradcam_cases.py --smoke      # case 1 only, verify pipeline
-  python gradcam_cases.py --full       # both cases
-"""
 import argparse, json, sys
 from pathlib import Path
 import numpy as np
@@ -153,7 +121,7 @@ def render_panel(case_key, title, pid, label, cc_img, mlo_img, cc_cam, mlo_cam,
 
     truth = "Malignant" if label == 1 else "Benign"
     pred_s = "Malignant" if pred == 1 else "Benign"
-    correct = "✓" if pred == label else "✗"
+    correct = "OK" if pred == label else "X"
     sup = (f"{title}  |  patient {pid}\n"
            f"Truth: {truth}    Pred: {pred_s} (p_mal={prob_mal:.2f}) {correct}    "
            f"u_evid={u_evid:.3f}  u_disc={u_disc:.3f}  u_total={u_comb:.3f}\n"
@@ -195,7 +163,6 @@ def run(smoke):
         prob_mal = float(full["prob"][0, 1])
         pred = int(full["pred"][0])
 
-        # Δ-check: do displayed uncertainties match the CSV row? (provenance gate)
         csv_uc = float(row["uncertainty_combined"])
         if abs(u_comb - csv_uc) > 1e-3:
             print(f"  [WARN] u_combined live={u_comb:.4f} vs csv={csv_uc:.4f} "

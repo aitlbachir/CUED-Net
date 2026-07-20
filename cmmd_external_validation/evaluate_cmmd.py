@@ -1,28 +1,4 @@
-"""
-evaluate_cmmd.py — CUED-Net external validation on CMMD  (v4, CORRECT MODEL)
-============================================================================
-Uses the REAL CUED-Net ensemble (5 seeds) from cued_net/models/cued_net.py.
-
-  • Loads CUEDNet (DenseNet-121 dual evidential encoder), num_classes=2
-  • 5 checkpoints: outputs_cued/seed_{42,123,456,789,2024}/best_model.pt
-  • Uses CUEDNetEnsemble.predict → fused P(malignant) + triple uncertainty
-  • P(malignant) = prob[:, 1] directly (binary task, no collapse hack)
-
-Reports:
-  • Ensemble AUC + 95% bootstrap CI
-  • Sensitivity / Specificity / PPV / NPV  (Youden-J + fixed 0.5 thresholds)
-  • Selective prediction at 70% / 50% coverage, ranked by uncertainty_total
-  • UQ decomposition: evidential / ensemble / discordance, by correctness
-  • D2 subtype-stratified AUC
-
-Usage
------
-    python evaluate_cmmd.py \
-        --manifest  /workspace/cued_net/cmmd_pairs_full.json \
-        --ckpt_glob "/workspace/cued_net/outputs_cued/seed_*/best_model.pt" \
-        --output    /workspace/cued_net/cmmd_results_cuednet.json \
-        --models_dir /workspace/cued_net      # dir containing models/cued_net.py
-"""
+"""Evaluate CUED-Net on CMMD."""
 
 import argparse, glob, json, sys
 from pathlib import Path

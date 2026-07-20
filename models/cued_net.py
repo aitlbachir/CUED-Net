@@ -1,18 +1,4 @@
-"""
-CUED-Net: Cross-view Uncertainty-guided Evidential Dual-encoder Network
-========================================================================
-
-A Novel Framework for Breast Mass Morphology Classification with 
-Triple Uncertainty Decomposition and Selective Prediction
-
-Key Contributions:
-1. Triple Uncertainty Decomposition (Evidential + Ensemble + View Discordance)
-2. View Discordance Loss (VDL) - penalizes confident contradictions between views
-3. Uncertainty-Guided Selective Prediction with coverage analysis
-4. Adaptive threshold optimization based on uncertainty
-
-Author: [Your Name]
-"""
+"""CUED-Net: dual-encoder evidential network with view-discordance uncertainty."""
 
 import torch
 import torch.nn as nn

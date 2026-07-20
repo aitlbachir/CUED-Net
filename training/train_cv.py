@@ -1,34 +1,5 @@
 #!/usr/bin/env python
-"""
-train_cv.py — 5x5 cross-validation driver for CUED-Net.
-
-Reuses train_single_model() from train_cued_net.py UNCHANGED, feeding it fold
-loaders from cv_dataloaders.get_cv_dataloaders. For each (seed, fold) it:
-  - trains on fold train_idx, early-stops on fold val (the held-out portion),
-  - reloads best checkpoint, scores the fold val set,
-  - logs per-sample val predictions to a CSV (one row per pair),
-  - records fold-level F1/AUC/ACC.
-
-Aggregation: per seed = mean over 5 folds; reported as mean ± std across 5 seeds.
-The held-out 149-pair TEST set is a SEPARATE track (train_cued_net.py) and is
-not touched here — matching the rebuttal's "CV on dev set; test reported
-separately."
-
-LOCKED CSV SCHEMA (one row per val pair, every model/baseline uses this):
-    model, seed, fold, patient_id, label, prob_malignant, predicted, uncertainty
-
-USAGE
-    python train_cv.py \
-        --data_root /workspace/cbis-ddsm \
-        --folds_json /workspace/cued_net/cv_folds.json \
-        --seeds 42,123,456,789,2024 \
-        --epochs 50 --patience 15 --batch_size 16 --lr 1e-4 \
-        --output_dir /workspace/cued_net/cv_cued_net \
-        --pred_csv /workspace/cued_net/cv_preds/cued_net_preds.csv
-
-Smoke test ONE (seed,fold) first:
-    python train_cv.py ... --seeds 42 --only_fold 0
-"""
+"""Train CUED-Net under 5-fold x 5-seed cross-validation."""
 
 import argparse
 import csv

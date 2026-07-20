@@ -1,34 +1,5 @@
 #!/usr/bin/env python
-"""
-cv_dataloaders.py — Fold-aware CV loaders for CBIS-DDSM, wiring cv_folds.json
-into the existing CBISDDSMDataset WITHOUT relying on dict/glob ordering.
-
-WHY THIS EXISTS
----------------
-train_cued_net.py used CBISDDSMDataset's internal 85/15 split and never touched
-cv_folds.json. To honor the rebuttal's "5-fold stratified CV with patient-level
-grouping" commitment, every model (CUED-Net + baselines) must train/val on the
-SAME folds. This module provides that, with two safety guarantees:
-
-  1. ORDERING-ROBUST INDEX MAPPING. cv_folds.json's train_idx/val_idx are
-     positions into ITS pairs list. We do NOT assume the dataset enumerates
-     pairs in the same order (it depends on glob()/dict iteration). Instead we
-     map every fold index -> the fold file's pair -> the dataset's position via
-     a content key (patient_id, cc_filename). Verified: 530/530 resolve, 0
-     label mismatches.
-
-  2. PATIENT-LEVEL DISJOINTNESS is inherited from cv_folds.json (already
-     leakage-tested in a prior session); we re-assert it at load time.
-
-USAGE
------
-    from cv_dataloaders import get_cv_dataloaders
-    loaders, class_weights = get_cv_dataloaders(
-        data_root="/workspace/cbis-ddsm",
-        folds_json="/workspace/cued_net/cv_folds.json",
-        fold=0, batch_size=16, oversample=True)
-    # loaders["train"], loaders["val"]
-"""
+"""Cross-validation dataloaders with patient-grouped, class-balanced sampling."""
 
 import json
 from collections import Counter

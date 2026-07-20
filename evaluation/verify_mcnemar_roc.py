@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
-"""
-Verify (CPU-only) the two flagged rebuttal items against locked predictions:
-  (1) McNemar discordant-pair counts b/c and Holm-adjusted p for each baseline.
-  (2) Per-model AUROC under three pooling conventions, to identify whether the
-      ROC/PR figure should read 0.877 (pooled) or 0.874 (mean-of-folds/seeds).
-No GPU, no model loading. Reads only the saved prediction CSVs.
-Alignment replicates stats_tests2.py: _row = within-(seed,fold) cumcount,
-then assert patient_id and label agree across the paired merge.
-"""
+"""Cross-check McNemar and ROC computations."""
+
 import numpy as np, pandas as pd
 from sklearn.metrics import roc_auc_score, average_precision_score
 from scipy.stats import binomtest

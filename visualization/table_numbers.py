@@ -1,10 +1,5 @@
-"""
-table_numbers.py  — GPU-FREE. Fills the 5 [PENDING] manuscript numbers.
-Reads the canonical pooled CSVs in cv_preds_novdl/ (the final no_vdl config).
+"""Emit summary numbers for the results tables."""
 
-Does NOT assume column names — inspects first, then computes. Verifies by
-reproducing the known F1=0.834 / AUC=0.877 for CUED-Net before trusting the rest.
-"""
 import os, sys, json
 import numpy as np
 import pandas as pd

@@ -1,26 +1,6 @@
 #!/usr/bin/env python
-"""
-run_ablations.py — Component ablation harness for CUED-Net (R2.7).
+"""Component ablation harness (view-discordance loss, consistency)."""
 
-Arms:
-  no_vdl          : lambda_vdl=0.0, consistency kept (0.1)
-  no_consistency  : lambda_vdl=0.3, consistency=0.0
-  (full model is the existing cv_cued_net run; not re-run here)
-
-SAFETY:
-  - Does NOT edit train_cued_net.py or train_cv.py (locked, reproducible).
-  - Monkeypatches train_cued_net.CUEDNetLoss in-process only.
-  - Writes to ISOLATED dirs: cv_ablation/<arm>/...  and  cv_ablation/<arm>_preds.csv
-  - Never touches cv_cued_net/ or cv_preds/.
-
-USAGE:
-  # Smoke test (seed=42, fold=0) — verify before full launch
-  python run_ablations.py --arm no_vdl --smoke
-
-  # Full 5x5
-  python run_ablations.py --arm no_vdl --full
-  python run_ablations.py --arm no_consistency --full
-"""
 import argparse, csv, json, sys, time
 from pathlib import Path
 import numpy as np
@@ -106,7 +86,7 @@ def collect_val_predictions(model, loader, device):
             pred = (prob_mal >= 0.5).astype(int)
             u = out.get("uncertainty_combined", out.get("uncertainty_evidential"))
             u = u.cpu().numpy() if u is not None else np.full(len(labels), np.nan)
-            # discordance signal for R2.7 loss-vs-signal analysis
+            # discordance signal for loss-vs-signal analysis
             d = out.get("uncertainty_discordance")
             if d is not None:
                 disc_vals.extend(d.cpu().numpy().tolist())

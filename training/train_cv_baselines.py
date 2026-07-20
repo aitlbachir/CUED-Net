@@ -1,31 +1,5 @@
 #!/usr/bin/env python
-"""
-train_cv_baselines.py — 5x5 CV for conventional-UQ baselines (MC Dropout,
-Deep Ensemble), using the IDENTICAL fold loader, augmentation, schedule, and
-CSV schema as train_cv.py so Table I/II is symmetric with CUED-Net.
-
-Shared training core mirrors train_single_model: AdamW discriminative LR,
-CosineAnnealingWarmRestarts, 5-epoch encoder-freeze warmup, AMP, grad-clip 1.0,
-combined-metric (0.6*F1+0.4*AUC) early stopping on the fold val set.
-
-LOCKED CSV SCHEMA (same as CUED-Net):
-    model, seed, fold, patient_id, label, prob_malignant, predicted, uncertainty
-
-USAGE
-  MC Dropout (25 runs, ~3.25 h):
-    python train_cv_baselines.py --method mc_dropout \
-        --seeds 42,123,456,789,2024 --epochs 50 --patience 15 \
-        --output_dir /workspace/cued_net/cv_mcdropout \
-        --pred_csv  /workspace/cued_net/cv_preds/mcdropout_preds.csv
-
-  Deep Ensemble (M=5 per fold -> 125 trainings, ~16 h):
-    python train_cv_baselines.py --method deep_ensemble --ensemble_M 5 \
-        --seeds 42,123,456,789,2024 --epochs 50 --patience 15 \
-        --output_dir /workspace/cued_net/cv_ensemble \
-        --pred_csv  /workspace/cued_net/cv_preds/ensemble_preds.csv
-
-  Smoke test ONE fold first:  add  --seeds 42 --only_fold 0
-"""
+"""Cross-validation training for MC-Dropout and Deep-Ensemble baselines."""
 
 import argparse
 import csv

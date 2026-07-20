@@ -1,48 +1,5 @@
 #!/usr/bin/env python3
-"""
-dump_cued_decomposed.py — Re-export CUED-Net CV predictions WITH the decomposed
-uncertainty columns that train_cv.py never persisted (only scalar `uncertainty`
-= uncertainty_combined).
-
-CRITICAL CHECKPOINT LAYOUT (verified on pod):
-  The CV trained ONE model per (seed, fold) cell, saved at:
-      /workspace/cued_net/cv_cued_net/fold_{F}/seed_{S}/best_model.pt
-  These are the 25 models whose predictions are in cued_net_preds.csv.
-  (NOTE: /workspace/outputs_cued/seed_*/ is a DIFFERENT run — the standalone
-   5-seed ensemble on a fixed split — and must NOT be used here.)
-
-train_cv.py wrote each row via collect_val_predictions(model, loaders['val'], ...)
-using the IN-MEMORY model for that (seed, fold), reading:
-      out = model(cc, mlo); prob = out['prob'][:,1]
-      uncertainty = out['uncertainty_combined']
-The single-model forward() exposes (verified):
-      prob (B,2), uncertainty_evidential, uncertainty_discordance,
-      uncertainty_combined, view_agreement, ...
-So u_disc is well-defined per single model.
-
-OUTPUTS (in --out_dir):
-  (1) cued_net_preds_decomposed.csv  [2650 rows]
-      model,seed,fold,patient_id,label,prob_malignant,predicted,
-      uncertainty(=combined), uncertainty_combined,
-      uncertainty_evidential, uncertainty_discordance
-      -> per-(seed,fold) model on that fold's val. Reproduces the original
-         predictions (Δprob -> 0). Symmetric with the baseline per-seed CSVs.
-
-  (2) cued_net_ensemble_preds.csv    [530 rows]
-      ...,uncertainty(=total),uncertainty_evidential,uncertainty_ensemble,
-      uncertainty_discordance,uncertainty_total
-      -> PROPER CV ensemble: for each fold, the 5 seed-models trained on THAT
-         fold are ensembled and evaluated on that fold's held-out val. No
-         train/val contamination. Genuine u_ens / u_total.
-
-USAGE
-  cd /workspace/cued_net
-  python dump_cued_decomposed.py \
-      --cv_ckpt_root /workspace/cued_net/cv_cued_net \
-      --data_root    /workspace/cbis-ddsm \
-      --folds_json   /workspace/cued_net/cv_folds.json \
-      --out_dir      /workspace/cued_net/cv_preds
-"""
+"""Dump per-sample decomposed uncertainty from trained checkpoints."""
 
 import argparse, glob, json, os, sys
 import numpy as np
@@ -213,7 +170,7 @@ def main():
              "uncertainty_evidential","uncertainty_discordance"]]
     out1 = os.path.join(args.out_dir, "cued_net_preds_decomposed.csv")
     ps.to_csv(out1, index=False)
-    print(f"\n[✓] per-seed -> {out1}  ({len(ps)} rows; expect 2650)")
+    print(f"\n[ok] per-seed -> {out1}  ({len(ps)} rows; expect 2650)")
 
     # ---- (2) ENSEMBLE: per fold, ensemble the 5 seed-models for that fold ----
     ens_frames = []
@@ -243,7 +200,7 @@ def main():
              "uncertainty_ensemble","uncertainty_discordance","uncertainty_total"]]
     out2 = os.path.join(args.out_dir, "cued_net_ensemble_preds.csv")
     en.to_csv(out2, index=False)
-    print(f"[✓] ensemble -> {out2}  ({len(en)} rows; expect 530)")
+    print(f"[ok] ensemble -> {out2}  ({len(en)} rows; expect 530)")
 
     # ---- alignment + reproduction gate vs the OLD per-seed CSV ----
     old = os.path.join(args.out_dir, "cued_net_preds.csv")
@@ -269,7 +226,7 @@ def main():
             print(f"[check] max |Δprob|        vs old: {max_dprob:.4g} (want ~0)")
             print(f"[check] max |Δuncertainty| vs old: {max_dunc:.4g} (want ~0)")
             if max_dprob < 1e-3 and max_dunc < 1e-3:
-                print("[✓] VERIFIED: dump reproduces the original CV predictions.")
+                print("[ok] VERIFIED: dump reproduces the original CV predictions.")
             else:
                 print("[!] Δ exceeds tolerance — inspect before trusting the dump.")
         else:

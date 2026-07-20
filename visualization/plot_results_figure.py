@@ -1,24 +1,5 @@
-"""
-plot_results_figure.py  — GPU-FREE. Regenerates results_figure.png from the
-pooled 5-fold CV predictions (replaces the stale single-split version).
+"""Plot the main results figure."""
 
-Reads cv_preds_novdl/*.csv. Known schema (verified):
-  columns: model, seed, fold, patient_id, label, prob_malignant, predicted, uncertainty
-
-Six panels, consistent with the revised tables:
-  (a) ROC (CUED-Net + baselines)            -> AUC 0.877, ties visible
-  (b) Precision-Recall                       -> AP
-  (c) Selective prediction: F1 vs coverage   -> defer most-uncertain first
-  (d) Uncertainty: correct vs incorrect      -> the p=0.012 story
-  (e) Per-source uncertainty distributions   -> replaces the retired "52.6% pie"
-  (f) Confusion matrix (pooled CV)           -> replaces old 49/63 matrix
-
-Panel (e) needs per-source columns. The CUED-Net pooled CSV here has a single
-'uncertainty' column (the deployed u_comb). If a richer per-source dump exists
-(u_evid/u_disc/u_ens columns), the script uses it; otherwise panel (e) shows the
-distribution of the deployed uncertainty split by correctness as a fallback and
-prints a NOTE so we can wire the per-source file if you want the 3-way panel.
-"""
 import os, sys, json
 import numpy as np
 import pandas as pd

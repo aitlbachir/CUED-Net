@@ -1,33 +1,5 @@
 #!/usr/bin/env python
-"""
-calibrate_cmmd.py — Calibration analysis for CUED-Net on CMMD.
-
-WHAT IT REPORTS (per seed, for both zero-shot and fine-tuned models, on the
-exact held-out test split saved in each finetune_seed*.json):
-  - ECE (Expected Calibration Error, 15 bins)
-  - MCE (Maximum Calibration Error)
-  - Brier score
-  - NLL (negative log-likelihood)
-  - reliability-diagram data (bin confidences + accuracies + counts)
-  - temperature scaling: T fit on the VAL split, ECE before/after on TEST
-
-This answers the plan's calibration must-have (ECE, reliability diagrams,
-temperature scaling) AND the Week-6 "ECE drift" between zero-shot and adapted.
-
-It is pure inference on existing checkpoints — no training. Splits are read
-from the saved JSONs so calibration runs on identical samples to the AUC.
-
-USAGE (one seed):
-    python calibrate_cmmd.py \
-        --manifest      /workspace/cued_net/cmmd_pairs_cropped.json \
-        --zs_ckpt       /workspace/outputs_cued/seed_42/best_model.pt \
-        --ft_ckpt       /workspace/cued_net/finetune_out_25pct/cued_cmmd_ft_seed42.pt \
-        --split_json    /workspace/cued_net/finetune_out_25pct/finetune_seed42.json \
-        --models_dir    /workspace/cued_net \
-        --out           /workspace/cued_net/calib_out/calib_seed42.json
-
-Loop over seeds with a shell for-loop (see message).
-"""
+"""Calibrate CUED-Net predictions on CMMD."""
 
 import argparse
 import json

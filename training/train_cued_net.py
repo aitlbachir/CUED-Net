@@ -1,22 +1,4 @@
-"""
-CUED-Net: Complete Training and Evaluation Pipeline
-====================================================
-
-Novel Contributions:
-1. Triple Uncertainty Decomposition
-2. View Discordance Loss (VDL)
-3. Uncertainty-Guided Selective Prediction
-4. Coverage-Accuracy Analysis
-
-Usage:
-    python train_cued_net.py --data_root /workspace/cbis-ddsm
-
-This will:
-1. Train 5-seed ensemble
-2. Evaluate with triple uncertainty
-3. Generate coverage-accuracy curves
-4. Produce publication-ready results
-"""
+"""Single-run CUED-Net training."""
 
 import os
 import sys

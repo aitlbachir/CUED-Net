@@ -1,16 +1,5 @@
 #!/usr/bin/env python
-"""
-calibration_cbis.py — Calibration analysis for JBHI R2.8 (CBIS-DDSM, 5×5 CV).
-
-Inputs : the 5 locked Table-II prediction CSVs in cv_preds/
-          (cued_net_preds.csv, mcdropout_preds.csv, ensemble_preds.csv,
-           tmc_preds.csv, single_view_edl_preds.csv)
-Outputs: calibration_results.json
-         table_calibration.tex   (IEEE siunitx+booktabs, paste-ready)
-         reliability_diagram.pdf / .png
-
-GPU: NOT REQUIRED — pure numpy/matplotlib.
-"""
+"""Calibration metrics (ECE, Brier, NLL) on CBIS-DDSM."""
 
 import argparse, glob, json, os
 from pathlib import Path
@@ -269,7 +258,7 @@ def main():
 
     plot_reliability(models_data, str(Path(args.out)/"reliability_diagram"))
 
-    print("\n── CALIBRATION SUMMARY (for R2.8 rebuttal) ──")
+    print("\n── CALIBRATION SUMMARY ──")
     ref = results.get(args.reference, {})
     for name in MODEL_ORDER:
         if name == args.reference or name not in results:

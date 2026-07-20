@@ -1,28 +1,5 @@
 #!/usr/bin/env python
-"""
-baseline_models_edl_tmc.py — Evidential baselines for CUED-Net comparison.
-
-Both reuse the AUTHORITATIVE EvidentialLayer + ViewEncoder from
-models/cued_net.py verbatim, so the only varied factor is the UQ/fusion
-mechanism (methodological symmetry for Table II).
-
-  - SingleViewEDL  : one CC ViewEncoder, evidential head, NO MLO, NO fusion,
-                     NO view-discordance loss. The "remove 2nd view + fusion"
-                     ablation. Loss = CUED-Net's evidential loss on one view.
-                     uncertainty = K/S vacuity (identical formula to CUED-Net).
-
-  - TMCDualView    : two evidential ViewEncoders (CC, MLO) combined by
-                     DEMPSTER'S RULE OF COMBINATION (Han et al., "Trusted
-                     Multi-View Classification", ICLR 2021) — NOT CUED-Net's
-                     uncertainty-weighted averaging. This is the genuine
-                     external method; its novelty (DS combination) is distinct
-                     from ours (confidence-weighted prob fusion + VDL).
-                     uncertainty = K/S of the COMBINED Dirichlet.
-
-Evidential conventions copied from models/cued_net.py (do not diverge):
-    evidence = softplus(fc(x));  alpha = evidence + 1;  S = sum(alpha);
-    prob = alpha / S;            uncertainty (vacuity) = K / S.
-"""
+"""Trusted Multi-View (TMC) and single-view EDL baselines."""
 
 import sys
 import torch

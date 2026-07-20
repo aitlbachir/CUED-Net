@@ -1,35 +1,5 @@
 #!/usr/bin/env python3
-"""
-build_cmmd_manifest.py
-======================
-Construct a leakage-free, header-verified CC+MLO lesion-pair manifest for the
-CMMD external-validation set, in the same pair schema consumed by
-CBISDDSMDataset.
-
-Sample unit  : (patient_id, laterality) breast-pair
-Pair rule    : created only when BOTH a CC and an MLO DICOM exist for that breast
-View source  : DICOM (0054,0220) ViewCodeSequence -> CodeValue
-                 399162004 = CC, 399368009 = MLO   (SNOMED-CT)
-Laterality   : DICOM (0020,0062) ImageLaterality (R/L)
-Label        : clinical xlsx, joined on (ID1, LeftRight)
-                 Malignant -> 1, Benign -> 0
-Group key    : patient_id   (= ID1; for CV/eval grouping, no patient split here)
-
-Output: cmmd_pairs.json  — list of records:
-    {
-      "patient_id": "D2-0001",
-      "laterality": "L",
-      "label": 1,
-      "cc_path":  "<abs path to CC dicom>",
-      "mlo_path": "<abs path to MLO dicom>",
-      "abnormality": "calcification",
-      "subtype": "...",            # may be null
-      "age": 44
-    }
-
-CMMD is EXTERNAL VALIDATION ONLY. It must never enter CV-fold construction
-or any training split. This script does not split; it emits the full manifest.
-"""
+"""Build the CMMD CC+MLO pair manifest (Kaggle-mirror layout)."""
 
 import os
 import glob
