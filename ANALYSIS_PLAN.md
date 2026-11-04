@@ -29,6 +29,8 @@ hash of this file is quoted in the manuscript. `evaluation/p2_analysis.py` imple
 - Seeds: 42, 123, 456, 789, 2024. All settings are in `training/p2_config.py`.
 - Methods: CUED-Net, TMC, single-view EDL, cross-view transformer, softmax dual-view
   (used as MC-Dropout with T = 50, and as Deep-Ensemble with M = 5 seed models).
+  CUED-Net with a ConvNeXt-T encoder is a backbone comparison, reported apart.
+  This list was fixed before any outer-fold or held-out metric was computed.
 
 ## 3. Inference
 - Unit: lesion pair, resampled by patient. B = 10,000, percentile intervals.

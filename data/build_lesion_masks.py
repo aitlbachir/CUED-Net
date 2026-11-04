@@ -80,12 +80,14 @@ def main():
 
     rows = []
     for rec in pd.read_csv(args.patch_report).itertuples():
-        if rec.duplicate:
+        # Development cases only. The held-out split is not read.
+        if rec.duplicate or "Mass-Training" not in rec.file:
             continue
         crop = np.asarray(Image.open(rec.source).convert("L"))
         parsed = parse_study(rec.study)
         status, score = "no_mask", 0.0
-        full_path = resolve_jpeg(fulls.get(parsed[:4], ""), root, leaf_index)
+        full_value = fulls.get(parsed[:4])
+        full_path = resolve_jpeg(full_value, root, leaf_index) if full_value else None
         best = None
         for candidate in masks.get(rec.study, []):
             path = resolve_jpeg(candidate, root, leaf_index)
