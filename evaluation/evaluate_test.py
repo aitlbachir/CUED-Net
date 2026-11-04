@@ -17,10 +17,8 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from data.p2_data import ImageCache, PairDataset, eval_transform, load_manifest
-from training.p2_config import METHODS, SEEDS
+from training.p2_config import LOCKED_METHODS as LOCKED, METHODS, SEEDS
 from training.train_p2 import build, predict, write_csv
-
-LOCKED = ["cued_net", "softmax_dual", "tmc", "sv_edl", "cross_view"]
 
 
 def main():

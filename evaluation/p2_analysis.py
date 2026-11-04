@@ -46,6 +46,12 @@ def sigmoid(z):
     return 1.0 / (1.0 + np.exp(-z))
 
 
+def binary_entropy(p):
+    """Predictive entropy, the uncertainty score of softmax comparators."""
+    p = np.clip(p, EPS, 1 - EPS)
+    return -(p * np.log(p) + (1 - p) * np.log(1 - p))
+
+
 def nll(y, p):
     p = np.clip(p, EPS, 1 - EPS)
     return -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
@@ -136,6 +142,8 @@ class Prepared:
             self.u_evid[si, idx], self.u_disc[si, idx] = ov.u_evid.values, ov.u_disc.values
             xb = lambda Z: np.column_stack([np.ones(len(Z)), Z]) @ b1
             return xb(Zo), xb(Zi)
+        if unc is None and "vacuity" not in ov:
+            return binary_entropy(ov["p"].values), binary_entropy(iv["p"].values)
         c = unc or "vacuity"
         return ov[c].values, iv[c].values
 
@@ -433,7 +441,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--split", default="outer_val", choices=["outer_val", "test"])
+    ap.add_argument("--split", default="outer_val", choices=["outer_val", "test", "cmmd", "cmmd_eval", "cmmd_mass"])
     ap.add_argument("--inner_fold", type=int, default=None, help="fold id that provides inner validation for --split test")
     ap.add_argument("--B", type=int, default=10000)
     ap.add_argument("--B_added", type=int, default=2000)
@@ -443,7 +451,7 @@ def main():
     tables = {m: (add_scores(read_split(args.runs, m, "inner_val")), add_scores(read_split(args.runs, m, args.split)))
               for m in ["cued_net", "tmc", "softmax_dual", "sv_edl", "cross_view", "cued_convnext", "cued_r1_kl"]
               if read_split(args.runs, m, args.split) is not None}
-    if args.split == "test":
+    if args.split != "outer_val":
         tables = {k: (i[i.fold == -1], o) for k, (i, o) in tables.items()}
     models = {}
     for name, (iv, ov) in tables.items():

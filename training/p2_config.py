@@ -24,6 +24,11 @@ LOSS = dict(lambda_kl=0.1, lambda_consistency=0.1, annealing_epochs=10)
 MC_DROPOUT_PASSES = 50
 DECISION_THRESHOLD = 0.5
 
+# CMMD head adaptation. Fractions are of patients, stratified, seed 2026.
+ADAPTATION = dict(train_fraction=0.10, val_fraction=0.20, max_epochs=30, patience=8, lr=1e-4, weight_decay=1e-4, batch_size=16)
+ADAPTED_METHODS = ["cued_net", "tmc"]
+LOCKED_METHODS = ["cued_net", "softmax_dual", "tmc", "sv_edl", "cross_view"]
+
 # method id -> constructor settings. Each table in the paper names these ids.
 METHODS = {
     "cued_net": dict(model="cued_net", backbone="densenet121", kl_mode="standard", save_ckpt=True),

@@ -75,3 +75,37 @@ discordance only as a descriptive attribution signal.
 ## 7. Held-out evaluation
 All locked models are trained first. `evaluation/evaluate_test.py` then runs once
 for all methods and writes a lock file. Any later run is disclosed in the paper.
+
+## 8. Uncertainty scores of comparators
+TMC and single-view EDL use vacuity, MC-Dropout the entropy of the mean over
+T = 50 passes, Deep-Ensemble the entropy of the mean over five seed models, and
+the cross-view transformer the predictive entropy of a single pass.
+
+## 9. External evaluation on CMMD
+- Cohort: every breast with both CC and MLO and a clinical label. Labels are
+  breast-level. Inputs are label-blind whole-breast crops with no lesion ROI.
+  Lesion types are mixed. Patients are assigned once, seed 2026, stratified by
+  any malignant breast: 10% adaptation training, 20% adaptation validation,
+  70% evaluation.
+- Zero-shot: fold -1 models unchanged. Temperature and thresholds come from
+  CBIS-DDSM inner validation. No CMMD case informs any choice. Reported on all
+  pairs, on the evaluation patients and on the mass-containing subset of them.
+- Adapted, CUED-Net and TMC only: encoders frozen with batch norm in evaluation
+  mode, heads retrained for at most 30 epochs with patience 8, selection,
+  temperature and thresholds on adaptation validation. Reported on the evaluation
+  patients and their mass-containing subset. Zero-shot and adapted results stay in
+  separate rows, and only the evaluation-patient rows are compared.
+
+## 10. Saliency against lesion masks
+Grad-CAM of the predicted class evidence for each view of every outer-fold case and
+seed, on the cross-validation models, so the held-out split is not read. Masks are
+placed by locating each crop in its full mammogram. Views with a match score under
+0.8 are left out and counted. Measures: share of saliency energy inside the mask,
+that share divided by mask area (1 means no concentration), and whether the peak
+falls inside the mask, by correctness and evidential tercile, with patient-clustered
+intervals. Crops are lesion-centred, so the mask covers much of the input and the
+chance level is reported beside each value.
+
+## 11. Cost
+Parameters, operations and per-pair latency at batch size 1 on one GPU, for all
+methods in one script, with MC-Dropout at T = 50 and Deep-Ensemble at M = 5.

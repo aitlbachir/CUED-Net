@@ -86,3 +86,59 @@ def test_inner_splits_are_patient_disjoint():
     check_splits(manifest, splits)
     assert splits == build_splits(manifest)
     assert set(splits[-1]["train"]) | set(splits[-1]["inner_val"]) == set(range(200))
+
+
+def test_cmmd_patient_split_is_disjoint_and_covers_all():
+    from data.build_cmmd_p2 import patient_split
+    pairs = [dict(patient_id=f"D{i // 2}", label=int(i % 7 == 0)) for i in range(600)]
+    split = patient_split(pairs, 0.10, 0.20)
+    assert set(split) == {p["patient_id"] for p in pairs}
+    frac = sum(v == "eval" for v in split.values()) / len(split)
+    assert abs(frac - 0.70) < 0.02
+    assert patient_split(pairs, 0.10, 0.20) == split
+
+
+def test_adaptation_leaves_encoders_frozen():
+    from evaluation.cmmd_p2 import freeze_for_adaptation
+    for cls in (CUEDNet, TMCDualView):
+        m = cls(pretrained=False)
+        freeze_for_adaptation(m)
+        assert not any(p.requires_grad for n, p in m.named_parameters() if ".features." in n)
+        assert any(p.requires_grad for n, p in m.named_parameters() if ".features." not in n)
+
+
+def test_mask_alignment_recovers_a_known_position():
+    import numpy as np
+    from data.build_lesion_masks import align
+    rng = np.random.default_rng(0)
+    import cv2
+    full = cv2.GaussianBlur((rng.random((600, 500)) * 255).astype(np.uint8), (0, 0), 3)
+    full = ((full.astype(float) - full.min()) / (full.max() - full.min()) * 255).astype(np.uint8)
+    mask = np.zeros_like(full)
+    mask[200:280, 150:230] = 255
+    crop = full[180:300, 130:250]
+    aligned, score = align(full, mask, crop)
+    assert score > 0.9
+    assert abs((aligned > 0).mean() - (80 * 80) / (120 * 120)) < 0.02
+    assert aligned[60, 60] > 0 and aligned[5, 5] == 0
+
+
+def test_saliency_metrics():
+    import numpy as np
+    from evaluation.gradcam_p2 import mask_metrics
+    mask = np.zeros((10, 10))
+    mask[:5, :] = 1
+    assert abs(mask_metrics(np.ones((10, 10)), mask)["lift"] - 1.0) < 1e-6
+    cam = np.zeros((10, 10))
+    cam[2, 2] = 1.0
+    m = mask_metrics(cam, mask)
+    assert m["energy"] == 1.0 and m["lift"] == 2.0 and m["hit"] == 1.0
+    assert np.isnan(mask_metrics(np.zeros((10, 10)), mask)["energy"])
+
+
+def test_grad_cam_shape_and_sign():
+    from evaluation.gradcam_p2 import grad_cam
+    from models.cued_net import ViewEncoder
+    enc = ViewEncoder(pretrained=False).eval()
+    cam = grad_cam(enc, torch.rand(2, 3, 224, 224))
+    assert cam.shape == (2, 224, 224) and (cam >= 0).all()

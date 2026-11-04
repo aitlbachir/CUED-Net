@@ -18,3 +18,4 @@ tqdm>=4.65
 # DICOM handling (CMMD external-validation manifest construction only)
 pydicom>=2.4
 openpyxl>=3.1
+opencv-python
