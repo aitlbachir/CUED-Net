@@ -6,7 +6,7 @@ TEST_PHASE_FOLD = -1
 
 TRAINING = dict(
     max_epochs=50,
-    patience=12,
+    patience=15,
     freeze_epochs=5,
     batch_size=16,
     lr_head=1e-4,

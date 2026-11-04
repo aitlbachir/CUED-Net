@@ -4,9 +4,12 @@ Committed before any locked model is evaluated on the held-out split. The commit
 hash of this file is quoted in the manuscript. `evaluation/p2_analysis.py` implements it.
 
 ## 1. Data
-- Development cohort: CBIS-DDSM mass cases from the official training split, frozen
-  patient folds (`data/cv_folds.json`, md5 10b4dbd4e933575e2ffd72048869eefd).
-- Held-out split: CBIS-DDSM mass cases from the official test split. It is not
+- Development cohort: 528 lesion pairs from 482 patients (258 malignant), CBIS-DDSM
+  official training split. Pairs are keyed on patient, side and the abnormality id in
+  the study name. Patients keep their frozen R1 folds (`data/cv_folds.json`, md5
+  10b4dbd4e933575e2ffd72048869eefd). Manifest md5 5aef69eb5e82bf80eb29eb9771f392f8.
+- Held-out split: 154 lesion pairs from 143 patients (60 malignant), CBIS-DDSM
+  official test split, no patient overlap with development. It is not
   a pristine set. It produced the January 2026 results and ablation, and was
   evaluated twice on 1 June 2026 during reconstruction of the patch pipeline,
   which informed the use of cropped images. No R2 choice uses it.
@@ -18,6 +21,10 @@ hash of this file is quoted in the manuscript. `evaluation/p2_analysis.py` imple
   stratified by label, fixed across models and seeds.
 - Inner validation alone sets early stopping, temperature, referral thresholds,
   uncertainty score weights and the fixed-specificity threshold.
+- Early stopping starts when the encoders are unfrozen (epoch 6), patience 15,
+  50 epochs at most. A pilot on inner validation only showed that counting from
+  epoch 1 stopped some runs before the encoders had trained. No outer-fold or
+  held-out result informed this change.
 - Decision threshold: 0.5, fixed in advance, same for all methods.
 - Seeds: 42, 123, 456, 789, 2024. All settings are in `training/p2_config.py`.
 - Methods: CUED-Net, TMC, single-view EDL, cross-view transformer, softmax dual-view

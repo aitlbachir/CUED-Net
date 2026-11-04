@@ -147,7 +147,7 @@ def train(args):
     sched = CosineAnnealingWarmRestarts(opt, T_0=t["cosine_t0"], T_mult=t["cosine_tmult"], eta_min=t["cosine_eta_min"])
     scaler = GradScaler(device.type, enabled=device.type == "cuda")
 
-    best, best_state, stale, log = -1.0, None, 0, []
+    best, best_state, stale, best_epoch, log = -1.0, None, 0, 0, []
     for epoch in range(1, args.epochs + 1):
         ep0 = time.time()
         (model.freeze_encoders if epoch <= t["freeze_epochs"] else model.unfreeze_encoders)()
@@ -172,9 +172,12 @@ def train(args):
         sched.step()
         val = predict(model, loaders["inner_val"], device)
         score = selection_score(val)
-        log.append(dict(epoch=epoch, score=float(score), loss=float(loss), seconds=time.time() - ep0))
+        log.append(dict(epoch=epoch, score=float(score), loss=loss.item(), seconds=time.time() - ep0))
+        # Selection starts once the encoders are trainable.
+        if epoch <= t["freeze_epochs"] and args.epochs > t["freeze_epochs"]:
+            continue
         if score > best:
-            best, stale = score, 0
+            best, stale, best_epoch = score, 0, epoch
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
         else:
             stale += 1
@@ -191,7 +194,7 @@ def train(args):
         torch.save({"model_state_dict": best_state, "method": args.method, "fold": args.fold, "seed": args.seed},
                    out / "best_model.pt")
     json.dump(dict(method=args.method, fold=args.fold, seed=args.seed, best_score=best,
-                   best_epoch=int(np.argmax([e["score"] for e in log])) + 1, epochs_run=len(log),
+                   best_epoch=best_epoch, epochs_run=len(log),
                    seconds=time.time() - t0, device=torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
                    manifest_md5=manifest.get("md5", ""), log=log), open(out / "done.json", "w"))
     print(f"done {args.method} fold={args.fold} seed={args.seed} score={best:.4f} "
