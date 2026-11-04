@@ -13,7 +13,7 @@ predictive uncertainty.
 > **R2 work in progress on this branch.** Protocol P2 entry points: `data/build_patchs.py`,
 > `data/build_p2_manifest.py`, `training/train_p2.py`, `training/run_queue.py`,
 > `evaluation/p2_analysis.py`, `evaluation/evaluate_test.py`, `ANALYSIS_PLAN.md`.
-> The code reviewed in R1 is tagged `v1.0-R1`. R1 scripts still on this branch
+> The code reviewed in R1 stays on `main`, commit 95d92c3. R1 scripts still on this branch
 > are being replaced and do not run against the corrected models.
 
 ---
