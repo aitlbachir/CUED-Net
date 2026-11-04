@@ -1,0 +1,70 @@
+# CUED-Net R2: pre-specified analysis plan
+
+Committed before any locked model is evaluated on the held-out split. The commit
+hash of this file is quoted in the manuscript. `evaluation/p2_analysis.py` implements it.
+
+## 1. Data
+- Development cohort: CBIS-DDSM mass cases from the official training split, frozen
+  patient folds (`data/cv_folds.json`, md5 10b4dbd4e933575e2ffd72048869eefd).
+- Held-out split: CBIS-DDSM mass cases from the official test split. It is not
+  a pristine set. It produced the January 2026 results and ablation, and was
+  evaluated twice on 1 June 2026 during reconstruction of the patch pipeline,
+  which informed the use of cropped images. No R2 choice uses it.
+- External: CMMD, reported separately. Labels are breast-level, inputs are whole-breast
+  crops without a lesion ROI, lesion types are mixed.
+
+## 2. Protocol
+- Inner validation: 85/15 split of each outer training fold, grouped by patient,
+  stratified by label, fixed across models and seeds.
+- Inner validation alone sets early stopping, temperature, referral thresholds,
+  uncertainty score weights and the fixed-specificity threshold.
+- Decision threshold: 0.5, fixed in advance, same for all methods.
+- Seeds: 42, 123, 456, 789, 2024. All settings are in `training/p2_config.py`.
+- Methods: CUED-Net, TMC, single-view EDL, cross-view transformer, softmax dual-view
+  (used as MC-Dropout with T = 50, and as Deep-Ensemble with M = 5 seed models).
+
+## 3. Inference
+- Unit: lesion pair, resampled by patient. B = 10,000, percentile intervals.
+- Single-model metrics are computed per seed in each bootstrap sample, then averaged.
+  The same resamples are used for all methods, which gives paired differences.
+- Deep-Ensemble gives one prediction per case and has no per-seed row.
+- Holm correction across the comparators, per metric.
+- Calibration errors use a bias-shifted percentile interval, because binned
+  errors are biased upward under resampling.
+
+## 4. Primary comparisons, CUED-Net against each comparator
+AUC, F1 at 0.5, AURC and E-AURC. A significant F1 difference is claimed only from
+the clustered paired test. Equivalence applies to cross-validated AUC only: margin
+0.03, claimed only if the 90% paired interval lies inside it. Otherwise the text
+says that no significant difference was detected. The held-out split is too
+small for an equivalence claim.
+
+## 5. Added value of view discordance
+With e = 1 when the prediction at 0.5 is wrong:
+
+    M0: logit P(e=1) = b0 + b1 u_evid
+    M1: logit P(e=1) = b0 + b1 u_evid + b2 u_disc
+
+Both are fitted on inner validation with standardised inputs and scored on the
+outer fold. Report the differences in error-detection AUROC and in AURC with
+patient-clustered intervals, plus the error rate by evidential and discordance
+tercile. Added value is claimed only if the interval of the AURC difference
+excludes zero. If it does not, the paper reports a null result and keeps
+discordance only as a descriptive attribution signal.
+
+## 6. Secondary analyses
+- Sensitivity, specificity, PPV, NPV, FNR, AP. PPV and NPV hold at cohort prevalence.
+- Sensitivity at 90% specificity, threshold from inner validation.
+- F1 at the inner-validation F1-maximising threshold.
+- ECE (15 equal-width and equal-mass bins), MCE, Brier, NLL, raw and calibrated.
+  Calibrated probability: sigmoid(logit(p) / T), T fitted per fold and seed by NLL.
+- Referral at 90, 80 and 70% inner-validation coverage: sensitivity among accepted
+  cases, share of malignant cases referred, share of errors captured.
+- Dependence between components: Spearman, distance correlation, kNN mutual
+  information, with 999 permutations. Pearson r alone is not used.
+- Decision curves for threshold probabilities of 5 to 50%, labelled retrospective.
+- Sensitivity analysis excluding breasts with more than one mass.
+
+## 7. Held-out evaluation
+All locked models are trained first. `evaluation/evaluate_test.py` then runs once
+for all methods and writes a lock file. Any later run is disclosed in the paper.
