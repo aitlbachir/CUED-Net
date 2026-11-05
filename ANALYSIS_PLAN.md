@@ -111,3 +111,38 @@ chance level is reported beside each value.
 ## 11. Cost
 Parameters, operations and per-pair latency at batch size 1 on one GPU, for all
 methods in one script, with MC-Dropout at T = 50 and Deep-Ensemble at M = 5.
+
+## 12. Amendment of 5 November 2026
+Made after the outer-fold results of sections 4 and 5 were seen and before any
+locked model was evaluated on the held-out split. Sections 1 to 11 stay as written,
+and their results are reported as pre-specified, including the null result of
+section 5 for the fitted score (dAURC +0.0004, 95% CI -0.0137 to 0.0136).
+
+Reason. The fitted score used vacuity and discordance only, on about 63 inner
+validation pairs per fold, and ranked errors worse than the comparators. It ignored
+the distance of the fused probability from the decision threshold.
+
+Uncertainty score. CUED-Net now reports the fused predictive entropy H(p), which has
+no fitted parameter, and its exact split in bits (`evaluation/decomposition.py`):
+
+    H(p) = sum_v w_v E[H(theta_v)]               aleatoric
+         + sum_v w_v (H(p_v) - E[H(theta_v)])    epistemic, mutual information
+         + (H(p) - sum_v w_v H(p_v))             cross-view, weighted Jensen-Shannon
+
+The contribution of the cross-view term is the AURC difference between H(p) and the
+sum of the first two terms. The dependence between the terms is reported. For a fair
+comparison, TMC and single-view EDL are scored by both vacuity and entropy.
+
+Backbone. Each comparator is retrained with ConvNeXt-T under the same protocol, so a
+method comparison is never confounded with a backbone comparison.
+
+Selection rules, fixed before those runs. All use inner validation of the outer folds:
+- Primary backbone: ConvNeXt-T if it has the higher mean selection score and the lower
+  mean inner-validation AURC of H(p). DenseNet-121 results stay reported.
+- Evidence scale: `cued_convnext_k5` replaces `cued_convnext` only if it has both the
+  lower inner-validation AURC of H(p) and the lower inner-validation NLL before
+  temperature scaling.
+The number of variants tried is reported. The outer folds informed this amendment, so
+outer-fold differences that favour the amended method are labelled post hoc. The held-out
+split is the confirmatory evaluation, and it runs once for all locked methods.
+

@@ -1,10 +1,10 @@
-"""Comparator models: all use the same DenseNet-121 trunk as CUED-Net."""
+"""Comparator models: each takes the same encoder backbone as the CUED-Net it is compared with."""
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.cued_net import ViewEncoder, evidential_loss
+from models.cued_net import FEATURE_DIMS, ViewEncoder, evidential_loss
 
 
 class _EncoderControl:
@@ -25,9 +25,9 @@ class _EncoderControl:
 class SoftmaxViewEncoder(nn.Module):
     """ViewEncoder trunk with a softmax head."""
 
-    def __init__(self, num_classes=2, pretrained=True):
+    def __init__(self, num_classes=2, pretrained=True, backbone="densenet121"):
         super().__init__()
-        base = ViewEncoder(num_classes=num_classes, pretrained=pretrained)
+        base = ViewEncoder(num_classes=num_classes, pretrained=pretrained, backbone=backbone)
         self.features = base.features
         self.pool = base.pool
         self.classifier = base.classifier
@@ -45,10 +45,10 @@ class SoftmaxDualView(nn.Module, _EncoderControl):
     MC-Dropout model (T stochastic passes), and as a Deep-Ensemble member.
     """
 
-    def __init__(self, num_classes=2, pretrained=True):
+    def __init__(self, num_classes=2, pretrained=True, backbone="densenet121"):
         super().__init__()
-        self.encoder_cc = SoftmaxViewEncoder(num_classes, pretrained)
-        self.encoder_mlo = SoftmaxViewEncoder(num_classes, pretrained)
+        self.encoder_cc = SoftmaxViewEncoder(num_classes, pretrained, backbone)
+        self.encoder_mlo = SoftmaxViewEncoder(num_classes, pretrained, backbone)
 
     def forward(self, img_cc, img_mlo):
         logit_cc, logit_mlo = self.encoder_cc(img_cc), self.encoder_mlo(img_mlo)
@@ -66,9 +66,9 @@ class SoftmaxDualLoss(nn.Module):
 class SingleViewEDL(nn.Module):
     """One evidential CC encoder. img_mlo is ignored."""
 
-    def __init__(self, num_classes=2, pretrained=True):
+    def __init__(self, num_classes=2, pretrained=True, backbone="densenet121"):
         super().__init__()
-        self.encoder_cc = ViewEncoder(num_classes, pretrained)
+        self.encoder_cc = ViewEncoder(num_classes, pretrained, backbone=backbone)
 
     def forward(self, img_cc, img_mlo=None):
         out = self.encoder_cc(img_cc)
@@ -109,11 +109,11 @@ def ds_combine(alpha1, alpha2, num_classes):
 class TMCDualView(nn.Module, _EncoderControl):
     """Two evidential encoders fused by Dempster's rule."""
 
-    def __init__(self, num_classes=2, pretrained=True):
+    def __init__(self, num_classes=2, pretrained=True, backbone="densenet121"):
         super().__init__()
         self.num_classes = num_classes
-        self.encoder_cc = ViewEncoder(num_classes, pretrained)
-        self.encoder_mlo = ViewEncoder(num_classes, pretrained)
+        self.encoder_cc = ViewEncoder(num_classes, pretrained, backbone=backbone)
+        self.encoder_mlo = ViewEncoder(num_classes, pretrained, backbone=backbone)
 
     def forward(self, img_cc, img_mlo):
         cc, mlo = self.encoder_cc(img_cc), self.encoder_mlo(img_mlo)
@@ -153,24 +153,24 @@ class CrossViewBlock(nn.Module):
 
 
 class CrossViewTransformer(nn.Module, _EncoderControl):
-    """DenseNet-121 encoders exchanging information through one cross-view block.
+    """Two encoders exchanging information through one cross-view block.
 
     Softmax outputs and late fusion match SoftmaxDualView, so the comparison
     isolates the effect of learned cross-view attention.
     """
 
-    def __init__(self, num_classes=2, pretrained=True, dim=256, grid=7):
+    def __init__(self, num_classes=2, pretrained=True, dim=256, grid=7, backbone="densenet121"):
         super().__init__()
-        self.encoder_cc = SoftmaxViewEncoder(num_classes, pretrained)
-        self.encoder_mlo = SoftmaxViewEncoder(num_classes, pretrained)
-        self.proj = nn.Conv2d(1024, dim, 1)
+        self.encoder_cc = SoftmaxViewEncoder(num_classes, pretrained, backbone)
+        self.encoder_mlo = SoftmaxViewEncoder(num_classes, pretrained, backbone)
+        self.proj = nn.Conv2d(FEATURE_DIMS[backbone], dim, 1)
         self.pos_cc = nn.Parameter(torch.zeros(1, grid * grid, dim))
         self.pos_mlo = nn.Parameter(torch.zeros(1, grid * grid, dim))
         nn.init.trunc_normal_(self.pos_cc, std=0.02)
         nn.init.trunc_normal_(self.pos_mlo, std=0.02)
         self.block_cc = CrossViewBlock(dim)
         self.block_mlo = CrossViewBlock(dim)
-        self.back = nn.Linear(dim, 1024)
+        self.back = nn.Linear(dim, FEATURE_DIMS[backbone])
 
     def forward(self, img_cc, img_mlo):
         f_cc, f_mlo = self.encoder_cc.features(img_cc), self.encoder_mlo.features(img_mlo)

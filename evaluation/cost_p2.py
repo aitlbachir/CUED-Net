@@ -14,7 +14,7 @@ from models.baseline_models import mc_dropout_predict
 from training.p2_config import MC_DROPOUT_PASSES
 from training.train_p2 import build
 
-DUAL_METHODS = ["cued_net", "tmc", "softmax_dual", "cross_view"]
+DUAL_METHODS = ["cued_net", "tmc", "softmax_dual", "cross_view", "cued_convnext", "tmc_convnext", "softmax_convnext", "cross_view_convnext"]
 
 
 def latency(fn, device, warmup=30, repeats=200):
@@ -58,11 +58,13 @@ def main():
         call = (lambda x, m=model: m(x)) if method == "sv_edl" else (lambda x, m=model: m(x, x))
         result[method] = dict(params_m=sum(p.numel() for p in model.parameters()) / 1e6, flops=operations(model, device) if method != "sv_edl" else None,
                               latency=latency(call, device))
-    base, _ = build("softmax_dual", pretrained=False)
-    base = base.to(device).eval()
-    result["mc_dropout"] = dict(passes=MC_DROPOUT_PASSES, latency=latency(lambda x: mc_dropout_predict(base, x, x, T=MC_DROPOUT_PASSES), device, 5, 40))
-    members = [build("softmax_dual", pretrained=False)[0].to(device).eval() for _ in range(5)]
-    result["deep_ensemble"] = dict(members=5, latency=latency(lambda x: [m(x, x) for m in members], device, 10, 100))
+    for name, suffix in (("softmax_dual", ""), ("softmax_convnext", "_convnext")):
+        base, _ = build(name, pretrained=False)
+        base = base.to(device).eval()
+        result["mc_dropout" + suffix] = dict(passes=MC_DROPOUT_PASSES, latency=latency(lambda x: mc_dropout_predict(base, x, x, T=MC_DROPOUT_PASSES), device, 5, 40))
+        members = [build(name, pretrained=False)[0].to(device).eval() for _ in range(5)]
+        result["deep_ensemble" + suffix] = dict(members=5, latency=latency(lambda x: [m(x, x) for m in members], device, 10, 100))
+        del base, members
     result["gpu"] = gpu
     json.dump(result, open(args.out, "w"), indent=1)
     print(json.dumps(result, indent=1))

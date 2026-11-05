@@ -34,15 +34,16 @@ def build_backbone(name, pretrained=True):
 class EvidentialLayer(nn.Module):
     """Map a hidden vector to Dirichlet parameters."""
 
-    def __init__(self, in_features, num_classes=2):
+    def __init__(self, in_features, num_classes=2, evidence_scale=1.0):
         super().__init__()
         self.num_classes = num_classes
+        self.evidence_scale = evidence_scale
         self.fc = nn.Linear(in_features, num_classes)
 
     def forward(self, x):
         # Dirichlet quantities stay in float32 under mixed precision.
         with torch.autocast(device_type=x.device.type, enabled=False):
-            evidence = F.softplus(self.fc(x.float()))
+            evidence = F.softplus(self.evidence_scale * self.fc(x.float()))
             alpha = evidence + 1.0
             S = torch.sum(alpha, dim=1, keepdim=True)
             return {
@@ -57,7 +58,7 @@ class EvidentialLayer(nn.Module):
 class ViewEncoder(nn.Module):
     """Single-view encoder with an evidential head."""
 
-    def __init__(self, num_classes=2, pretrained=True, hidden_dim=256, backbone="densenet121"):
+    def __init__(self, num_classes=2, pretrained=True, hidden_dim=256, backbone="densenet121", evidence_scale=1.0):
         super().__init__()
         self.features = build_backbone(backbone, pretrained)
         self.pool = nn.AdaptiveAvgPool2d(1)
@@ -71,7 +72,7 @@ class ViewEncoder(nn.Module):
             nn.ReLU(inplace=True),
             nn.Dropout(0.3),
         )
-        self.evidential = EvidentialLayer(64, num_classes)
+        self.evidential = EvidentialLayer(64, num_classes, evidence_scale)
 
     def forward(self, x):
         features = self.pool(self.features(x)).flatten(1)
@@ -99,11 +100,11 @@ def fuse_views(cc_out, mlo_out):
 class CUEDNet(nn.Module):
     """Two independent evidential encoders with uncertainty-weighted fusion."""
 
-    def __init__(self, num_classes=2, pretrained=True, backbone="densenet121"):
+    def __init__(self, num_classes=2, pretrained=True, backbone="densenet121", evidence_scale=1.0):
         super().__init__()
         self.num_classes = num_classes
-        self.encoder_cc = ViewEncoder(num_classes, pretrained, backbone=backbone)
-        self.encoder_mlo = ViewEncoder(num_classes, pretrained, backbone=backbone)
+        self.encoder_cc = ViewEncoder(num_classes, pretrained, backbone=backbone, evidence_scale=evidence_scale)
+        self.encoder_mlo = ViewEncoder(num_classes, pretrained, backbone=backbone, evidence_scale=evidence_scale)
 
     def forward(self, img_cc, img_mlo):
         cc_out = self.encoder_cc(img_cc)

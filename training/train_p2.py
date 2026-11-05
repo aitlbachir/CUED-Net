@@ -41,19 +41,20 @@ def set_seed(seed):
 def build(method, pretrained=True):
     cfg = METHODS[method]
     kind = cfg["model"]
+    backbone = cfg.get("backbone", "densenet121")
     if kind == "cued_net":
-        model = CUEDNet(pretrained=pretrained, backbone=cfg["backbone"])
+        model = CUEDNet(pretrained=pretrained, backbone=backbone, evidence_scale=cfg.get("evidence_scale", 1.0))
         crit = CUEDNetLoss(lambda_kl=LOSS["lambda_kl"], annealing_epochs=LOSS["annealing_epochs"],
                            lambda_consistency=cfg.get("lambda_consistency", LOSS["lambda_consistency"]),
                            lambda_vdl=cfg.get("lambda_vdl", 0.0), kl_mode=cfg["kl_mode"])
     elif kind == "softmax_dual":
-        model, crit = SoftmaxDualView(pretrained=pretrained), SoftmaxDualLoss()
+        model, crit = SoftmaxDualView(pretrained=pretrained, backbone=backbone), SoftmaxDualLoss()
     elif kind == "cross_view":
-        model, crit = CrossViewTransformer(pretrained=pretrained), SoftmaxDualLoss()
+        model, crit = CrossViewTransformer(pretrained=pretrained, backbone=backbone), SoftmaxDualLoss()
     elif kind == "tmc":
-        model, crit = TMCDualView(pretrained=pretrained), TMCLoss(LOSS["lambda_kl"], LOSS["annealing_epochs"])
+        model, crit = TMCDualView(pretrained=pretrained, backbone=backbone), TMCLoss(LOSS["lambda_kl"], LOSS["annealing_epochs"])
     elif kind == "sv_edl":
-        model, crit = SingleViewEDL(pretrained=pretrained), SingleViewEDLLoss(LOSS["lambda_kl"], LOSS["annealing_epochs"])
+        model, crit = SingleViewEDL(pretrained=pretrained, backbone=backbone), SingleViewEDLLoss(LOSS["lambda_kl"], LOSS["annealing_epochs"])
     else:
         raise ValueError(kind)
     return model, crit

@@ -142,3 +142,51 @@ def test_grad_cam_shape_and_sign():
     enc = ViewEncoder(pretrained=False).eval()
     cam = grad_cam(enc, torch.rand(2, 3, 224, 224))
     assert cam.shape == (2, 224, 224) and (cam >= 0).all()
+
+
+def test_decomposition_is_exact_and_non_negative():
+    import numpy as np
+    from evaluation.decomposition import decompose
+    rng = np.random.default_rng(0)
+    n = 2000
+    p1, p2 = rng.uniform(0.01, 0.99, n), rng.uniform(0.01, 0.99, n)
+    s1, s2 = rng.uniform(2.0, 200.0, n), rng.uniform(2.0, 200.0, n)
+    w = rng.uniform(0.2, 0.8, n)
+    d = decompose(p1, p2, s1, s2, w, 1 - w)
+    assert np.allclose(d["u_ale"] + d["u_epi"] + d["u_view"], d["u_total"])
+    assert (d["u_ale"] >= 0).all() and (d["u_epi"] >= -1e-9).all() and (d["u_view"] >= -1e-9).all()
+    assert (d["u_total"] <= 1 + 1e-9).all()
+
+
+def test_decomposition_limits():
+    import numpy as np
+    from evaluation.decomposition import decompose
+    one = lambda x: np.array([float(x)])
+    # Agreeing views: no cross-view term.
+    d = decompose(one(0.7), one(0.7), one(10), one(30), one(0.5), one(0.5))
+    assert abs(d["u_view"][0]) < 1e-9
+    # Strong evidence: the epistemic term vanishes.
+    d = decompose(one(0.7), one(0.7), one(1e6), one(1e6), one(0.5), one(0.5))
+    assert abs(d["u_epi"][0]) < 1e-3
+    # Confident opposite views: all uncertainty is cross-view.
+    d = decompose(one(0.999), one(0.001), one(1e6), one(1e6), one(0.5), one(0.5))
+    assert d["u_view"][0] > 0.95 and d["u_ale"][0] < 0.02
+
+
+def test_comparators_build_with_convnext():
+    from training.p2_config import METHODS
+    from training.train_p2 import build
+    x = torch.rand(2, 3, 224, 224)
+    for name in ("softmax_convnext", "tmc_convnext", "sv_edl_convnext", "cross_view_convnext", "cued_convnext_k5"):
+        m = build(name, pretrained=False)[0].eval()
+        with torch.no_grad():
+            assert m(x, x)["prob"].shape == (2, 2), name
+        assert METHODS[name]["backbone"] == "convnext_tiny"
+
+
+def test_evidence_scale_multiplies_the_head_output():
+    from models.cued_net import EvidentialLayer
+    a, b = EvidentialLayer(4), EvidentialLayer(4, evidence_scale=5.0)
+    b.load_state_dict(a.state_dict())
+    x = torch.rand(3, 4)
+    assert torch.allclose(b(x)["evidence"], torch.nn.functional.softplus(5.0 * a.fc(x)))

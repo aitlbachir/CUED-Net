@@ -42,4 +42,10 @@ METHODS = {
     "cued_effnet_b0": dict(model="cued_net", backbone="efficientnet_b0", kl_mode="standard", save_ckpt=False),
     "cued_no_consistency": dict(model="cued_net", backbone="densenet121", kl_mode="standard", lambda_consistency=0.0, save_ckpt=False),
     "cued_vdl": dict(model="cued_net", backbone="densenet121", kl_mode="standard", lambda_vdl=0.3, save_ckpt=False),
+    # Added 5 Nov 2026, before any held-out evaluation. See ANALYSIS_PLAN.md, section 12.
+    "softmax_convnext": dict(model="softmax_dual", backbone="convnext_tiny", save_ckpt=True, mc_dropout=True),
+    "tmc_convnext": dict(model="tmc", backbone="convnext_tiny", save_ckpt=True),
+    "sv_edl_convnext": dict(model="sv_edl", backbone="convnext_tiny", save_ckpt=True),
+    "cross_view_convnext": dict(model="cross_view", backbone="convnext_tiny", save_ckpt=True),
+    "cued_convnext_k5": dict(model="cued_net", backbone="convnext_tiny", kl_mode="standard", evidence_scale=5.0, save_ckpt=True),
 }
