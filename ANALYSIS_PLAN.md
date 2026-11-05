@@ -179,3 +179,28 @@ were read, and it stands although those outer folds later showed slightly worse 
 a sensitivity result, outside the Holm family. `cued_net_k5` is trained next and judged by
 the same rule against `cued_net`. Evidence scale is the one setting selected for CUED-Net
 alone, and the comparators keep scale 1.
+
+## 13. Checks of what each term measures
+Added 5 November 2026, before the held-out split was evaluated and before the radiologist
+annotations were joined to any prediction. These checks are descriptive, they sit outside
+the confirmatory claims, and they are reported whatever they show.
+
+Controlled changes, run once after the locked evaluation on the reference model of each
+arm, five seeds, held-out split (`evaluation/term_response_p2.py`). Each change is compared
+with the clean output of the same case, with a patient-clustered bootstrap.
+- swap_opposite: the MLO view is replaced by the MLO view of another patient with the
+  opposite label.
+- swap_same: the same, with a patient of the same label.
+- blur: both views blurred, Gaussian sigma 3 pixels at 224 by 224.
+Expected: view discordance uncertainty rises more under swap_opposite than under swap_same.
+No direction is assumed for blur.
+
+Radiologist annotations, outer folds, per case, mean across seeds (`evaluation/anchor_p2.py`).
+CBIS-DDSM records a subtlety rating and a BI-RADS assessment for each view of a lesion.
+- Spearman correlation of view discordance uncertainty with the absolute difference between
+  the CC and MLO subtlety ratings, and with the same difference in BI-RADS assessment.
+  Expected: positive.
+- Spearman correlation of H(p) and of the within-view terms with the mean subtlety rating,
+  where a higher rating means a more obvious lesion. Expected: negative.
+- Mean view discordance uncertainty and error rate for rating differences of 0, 1, and 2 or more.
+Permutations of whole patients, 999. No confirmatory claim rests on these.

@@ -228,3 +228,14 @@ def test_fusion_rules_keep_the_probability_range():
     assert fusion_rule(d, "max_evidence").p[0] == 0.6
     assert fusion_rule(d, "cc").p[0] == 0.2
     assert fusion_rule(d, "evidence_weighted").p[0] == 0.3
+
+
+def test_swapped_views_come_from_other_patients():
+    from evaluation.term_response_p2 import swapped
+    pairs = [dict(key=str(i), patient_id=f"P{i // 2}", label=i % 3 == 0, cc=f"c{i}", mlo=f"m{i}") for i in range(40)]
+    owner = {p["mlo"]: p for p in pairs}
+    for same in (True, False):
+        for p, q in zip(pairs, swapped(pairs, same)):
+            source = owner[q["mlo"]]
+            assert q["cc"] == p["cc"] and source["patient_id"] != p["patient_id"]
+            assert (source["label"] == p["label"]) == same
