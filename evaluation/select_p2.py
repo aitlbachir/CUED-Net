@@ -2,15 +2,15 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from p2_analysis import aurc, nll
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from evaluation.decomposition import add_decomposition
+from evaluation.p2_analysis import aurc, nll
 
 
 def inner_scores(runs, method):

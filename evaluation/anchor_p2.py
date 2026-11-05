@@ -2,13 +2,15 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy.stats import rankdata, spearmanr
 
-from p2_analysis import add_scores, cluster_permutation, holm, read_split
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from evaluation.p2_analysis import add_scores, cluster_permutation, holm, read_split
 
 VALUES = ["u_amb", "u_ev", "u_vd", "u_within", "u_total", "share_evid", "error"]
 
@@ -74,8 +76,9 @@ def analyse(t, perms):
                  subtlety_gap=rank_correlation(t, "subtlety_gap", "u_vd", perms),
                  entropy_with_subtlety=rank_correlation(t, "subtlety_mean", "u_total", perms),
                  evidential_share_with_subtlety=rank_correlation(t, "subtlety_mean", "share_evid", perms))
-    for k, adj in zip(tests, holm([v["p"] for v in tests.values()])):
-        tests[k]["p_holm"] = float(adj)
+    adjusted = holm({k: v["p"] for k, v in tests.items()})
+    for k in tests:
+        tests[k]["p_holm"] = float(adjusted[k])
     return dict(n=len(t), unmatched=int(t.subtlety_mean.isna().sum()), tests=tests, subtlety_gap_levels=levels(t),
                 assessment_differs=group_contrast(t, "assessment_differs", "u_vd", perms))
 
