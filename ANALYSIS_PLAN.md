@@ -207,6 +207,15 @@ with Holm correction across the four tests of one arm.
 Also reported without a test of its own: mean U_vd and error rate for subtlety differences of
 0, 1, and 2 or more, and the contrast for BI-RADS differences, which rests on few cases.
 
+Development reading of 5 November 2026, reported as read. On the outer folds, H(p) and the
+evidential share fell as lesions became more obvious (Spearman -0.24 and -0.25 for DenseNet-121,
+-0.21 and -0.19 for ConvNeXt-T, Holm p 0.0004). U_vd did not follow the annotations: test 1 gave
+0.51 and 0.53 (Holm p 1.0 and 0.56), and test 2 gave 0.01 and 0.02. All four tests stay as
+written for the held-out split. Added after that reading, and exploratory: among pairs with
+different subtlety ratings, does the more obvious view carry more evidence? Development
+difference in S: +0.12 (p 0.15) and +0.55 (p 0.03). It is tested once on the held-out split,
+outside the Holm family, where only about 31 pairs qualify.
+
 Controlled changes (`evaluation/term_response_p2.py`). Each change is compared with the clean
 output of the same case, with a patient-clustered bootstrap.
 - swap_opposite: the MLO view is replaced by the MLO view of another patient with the opposite

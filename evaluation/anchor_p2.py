@@ -12,7 +12,7 @@ from scipy.stats import rankdata, spearmanr
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from evaluation.p2_analysis import add_scores, cluster_permutation, holm, read_split
 
-VALUES = ["u_amb", "u_ev", "u_vd", "u_within", "u_total", "share_evid", "error"]
+VALUES = ["u_amb", "u_ev", "u_vd", "u_within", "u_total", "share_evid", "error", "s_cc", "s_mlo"]
 
 
 def annotate(t):
@@ -71,6 +71,18 @@ def levels(t):
     return {str(k): dict(n=int(len(v)), u_vd=float(v.u_vd.mean()), error=float(v.error.mean())) for k, v in g.groupby("level")}
 
 
+def clearer_view_evidence(t, perms=9999, seed=7):
+    """Exploratory. Among pairs rated differently, does the more obvious view carry more evidence?"""
+    s = t[t.subtlety_differs]
+    cc_clearer = (s.subtlety_CC > s.subtlety_MLO).values
+    d = np.where(cc_clearer, s.s_cc - s.s_mlo, s.s_mlo - s.s_cc)
+    group = pd.factorize(s.patient_id)[0]
+    flips = np.random.default_rng(seed).choice([-1, 1], size=(perms, group.max() + 1))[:, group]
+    null = np.abs((flips * d).mean(1))
+    return dict(n=len(s), difference=float(d.mean()), share_positive=float((d > 0).mean()),
+                p=float((1 + (null >= abs(d.mean())).sum()) / (perms + 1)))
+
+
 def analyse(t, perms):
     tests = dict(described_differently=group_contrast(t, "described_differently", "u_vd", perms),
                  subtlety_gap=rank_correlation(t, "subtlety_gap", "u_vd", perms),
@@ -80,7 +92,8 @@ def analyse(t, perms):
     for k in tests:
         tests[k]["p_holm"] = float(adjusted[k])
     return dict(n=len(t), unmatched=int(t.subtlety_mean.isna().sum()), tests=tests, subtlety_gap_levels=levels(t),
-                assessment_differs=group_contrast(t, "assessment_differs", "u_vd", perms))
+                assessment_differs=group_contrast(t, "assessment_differs", "u_vd", perms),
+                exploratory_clearer_view_evidence=clearer_view_evidence(t, perms))
 
 
 def main():
