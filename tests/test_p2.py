@@ -153,8 +153,8 @@ def test_decomposition_is_exact_and_non_negative():
     s1, s2 = rng.uniform(2.0, 200.0, n), rng.uniform(2.0, 200.0, n)
     w = rng.uniform(0.2, 0.8, n)
     d = decompose(p1, p2, s1, s2, w, 1 - w)
-    assert np.allclose(d["u_ale"] + d["u_epi"] + d["u_view"], d["u_total"])
-    assert (d["u_ale"] >= 0).all() and (d["u_epi"] >= -1e-9).all() and (d["u_view"] >= -1e-9).all()
+    assert np.allclose(d["u_amb"] + d["u_ev"] + d["u_vd"], d["u_total"])
+    assert (d["u_amb"] >= 0).all() and (d["u_ev"] >= -1e-9).all() and (d["u_vd"] >= -1e-9).all()
     assert (d["u_total"] <= 1 + 1e-9).all()
 
 
@@ -162,15 +162,15 @@ def test_decomposition_limits():
     import numpy as np
     from evaluation.decomposition import decompose
     one = lambda x: np.array([float(x)])
-    # Agreeing views: no cross-view term.
+    # Agreeing views: no view discordance term.
     d = decompose(one(0.7), one(0.7), one(10), one(30), one(0.5), one(0.5))
-    assert abs(d["u_view"][0]) < 1e-9
-    # Strong evidence: the epistemic term vanishes.
+    assert abs(d["u_vd"][0]) < 1e-9
+    # Strong evidence: the evidential term vanishes.
     d = decompose(one(0.7), one(0.7), one(1e6), one(1e6), one(0.5), one(0.5))
-    assert abs(d["u_epi"][0]) < 1e-3
-    # Confident opposite views: all uncertainty is cross-view.
+    assert abs(d["u_ev"][0]) < 1e-3
+    # Confident opposite views: nearly all uncertainty is view discordance.
     d = decompose(one(0.999), one(0.001), one(1e6), one(1e6), one(0.5), one(0.5))
-    assert d["u_view"][0] > 0.95 and d["u_ale"][0] < 0.02
+    assert d["u_vd"][0] > 0.95 and d["u_amb"][0] < 0.02
 
 
 def test_comparators_build_with_convnext():

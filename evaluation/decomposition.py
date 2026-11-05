@@ -3,11 +3,12 @@
 For views v with weights w_v, Dirichlet parameters alpha_v = S_v p_v and fused
 probability p = sum_v w_v p_v:
 
-    H(p) = sum_v w_v E[H(theta_v)]                     aleatoric
-         + sum_v w_v (H(p_v) - E[H(theta_v)])          epistemic, mutual information
-         + (H(p) - sum_v w_v H(p_v))                   cross-view, weighted Jensen-Shannon
+    H(p) = sum_v w_v E[H(theta_v)]                     within-view ambiguity
+         + sum_v w_v (H(p_v) - E[H(theta_v)])          evidential, Dirichlet mutual information
+         + (H(p) - sum_v w_v H(p_v))                   view discordance, weighted Jensen-Shannon
 
 The three terms are non-negative and sum to H(p). All come from one forward pass.
+The evidential term reflects lack of evidence and vanishes as the Dirichlet strength grows.
 """
 
 import numpy as np
@@ -32,14 +33,14 @@ def expected_entropy(p, S):
 
 
 def decompose(p_cc, p_mlo, s_cc, s_mlo, w_cc, w_mlo):
-    """Return aleatoric, epistemic, cross-view and total, all in bits."""
+    """Return the ambiguity, evidential, view discordance and total terms, in bits."""
     total_w = w_cc + w_mlo
     w_cc, w_mlo = w_cc / total_w, w_mlo / total_w
     p = w_cc * p_cc + w_mlo * p_mlo
-    ale = w_cc * expected_entropy(p_cc, s_cc) + w_mlo * expected_entropy(p_mlo, s_mlo)
+    amb = w_cc * expected_entropy(p_cc, s_cc) + w_mlo * expected_entropy(p_mlo, s_mlo)
     within = w_cc * entropy(p_cc) + w_mlo * entropy(p_mlo)
     total = entropy(p)
-    return dict(u_ale=ale, u_epi=within - ale, u_view=total - within, u_total=total)
+    return dict(u_amb=amb, u_ev=within - amb, u_vd=total - within, u_total=total)
 
 
 def add_decomposition(df):
@@ -48,5 +49,5 @@ def add_decomposition(df):
         for k, v in decompose(df.p_cc.values, df.p_mlo.values, df.s_cc.values, df.s_mlo.values,
                               df.w_cc.values, df.w_mlo.values).items():
             df[k] = v
-        df["u_no_view"] = df.u_ale + df.u_epi
+        df["u_within"] = df.u_amb + df.u_ev
     return df

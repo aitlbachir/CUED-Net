@@ -125,12 +125,12 @@ the distance of the fused probability from the decision threshold.
 Uncertainty score. CUED-Net now reports the fused predictive entropy H(p), which has
 no fitted parameter, and its exact split in bits (`evaluation/decomposition.py`):
 
-    H(p) = sum_v w_v E[H(theta_v)]               aleatoric
-         + sum_v w_v (H(p_v) - E[H(theta_v)])    epistemic, mutual information
-         + (H(p) - sum_v w_v H(p_v))             cross-view, weighted Jensen-Shannon
+    H(p) = sum_v w_v E[H(theta_v)]               within-view ambiguity
+         + sum_v w_v (H(p_v) - E[H(theta_v)])    evidential uncertainty, mutual information
+         + (H(p) - sum_v w_v H(p_v))             view discordance uncertainty, weighted JS
 
-The contribution of the cross-view term is the AURC difference between H(p) and the
-sum of the first two terms. The dependence between the terms is reported. For a fair
+The contribution of view discordance uncertainty is the AURC difference between H(p)
+and the sum of the first two terms. The dependence between the terms is reported. For a fair
 comparison, TMC and single-view EDL are scored by both vacuity and entropy.
 
 Backbone. Each comparator is retrained with ConvNeXt-T under the same protocol, so a
@@ -150,7 +150,7 @@ outer-fold differences that favour the amended method are labelled post hoc. The
 split is the confirmatory evaluation, and it runs once for all locked methods.
 
 Confirmatory claims, in order, DenseNet-121 arm first, then the ConvNeXt-T arm:
-1. The cross-view term lowers AURC: H(p) against the sum of the other two terms.
+1. View discordance uncertainty lowers AURC: H(p) against the sum of the other two terms.
 2. AURC of CUED-Net H(p) against each same-backbone comparator, under vacuity and entropy
    where both exist, with Holm correction per arm.
 Equivalence is never claimed on the held-out split. Comparisons across backbones are
