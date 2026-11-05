@@ -73,7 +73,7 @@ def run(args):
     out = Path(args.out)
     manifest = load_manifest(args.manifest)
     cache = ImageCache(args.patches)
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if args.development:
         splits = build_splits(manifest)
         cache.preload(manifest["pairs"])
