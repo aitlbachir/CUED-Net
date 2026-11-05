@@ -26,8 +26,9 @@ DECISION_THRESHOLD = 0.5
 
 # CMMD head adaptation. Fractions are of patients, stratified, seed 2026.
 ADAPTATION = dict(train_fraction=0.10, val_fraction=0.20, max_epochs=30, patience=8, lr=1e-4, weight_decay=1e-4, batch_size=16)
-ADAPTED_METHODS = ["cued_net", "tmc"]
-LOCKED_METHODS = ["cued_net", "softmax_dual", "tmc", "sv_edl", "cross_view", "cued_convnext"]
+ADAPTED_METHODS = ["cued_net", "tmc", "cued_convnext", "tmc_convnext"]
+LOCKED_METHODS = ["cued_net", "softmax_dual", "tmc", "sv_edl", "cross_view",
+                  "cued_convnext", "softmax_convnext", "tmc_convnext", "sv_edl_convnext", "cross_view_convnext"]
 
 # method id -> constructor settings. Each table in the paper names these ids.
 METHODS = {

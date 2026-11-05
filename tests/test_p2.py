@@ -190,3 +190,41 @@ def test_evidence_scale_multiplies_the_head_output():
     b.load_state_dict(a.state_dict())
     x = torch.rand(3, 4)
     assert torch.allclose(b(x)["evidence"], torch.nn.functional.softplus(5.0 * a.fc(x)))
+
+
+def test_cluster_permutation_moves_whole_patients():
+    import numpy as np
+    from evaluation.p2_analysis import cluster_permutation
+    group = np.array([0, 0, 1, 2, 2, 3, 4, 5, 5, 5, 6, 6, 6])
+    perm = cluster_permutation(group, np.random.default_rng(1))
+    assert sorted(perm) == list(range(len(group)))
+    for g in np.unique(group):
+        assert len(set(group[perm[group == g]])) == 1
+
+
+def test_referral_sensitivity_splits_all_malignant_cases():
+    import numpy as np
+    from evaluation.p2_analysis import all_metrics
+
+    class M:
+        seeds = [0]
+    m = M()
+    rng = np.random.default_rng(0)
+    m.y = rng.integers(0, 2, 200)
+    m.p = m.p_cal = rng.random((1, 200))
+    m.u = rng.random((1, 200))
+    m.t90 = m.t_f1 = np.full((1, 200), 0.5)
+    m.ref = {c: (m.u > c).astype(float) for c in (0.9, 0.8, 0.7)}
+    r = all_metrics(m, np.arange(200))
+    assert abs(r["sens_accepted_80"] * (1 - r["malignant_referred_80"]) + r["sens_referred_80"] * r["malignant_referred_80"] - r["sensitivity"]) < 1e-9
+
+
+def test_fusion_rules_keep_the_probability_range():
+    import numpy as np
+    import pandas as pd
+    from evaluation.p2_analysis import fusion_rule
+    d = pd.DataFrame(dict(p=[0.3], p_cc=[0.2], p_mlo=[0.6], s_cc=[3.0], s_mlo=[5.0]))
+    assert abs(fusion_rule(d, "equal").p[0] - 0.4) < 1e-9
+    assert fusion_rule(d, "max_evidence").p[0] == 0.6
+    assert fusion_rule(d, "cc").p[0] == 0.2
+    assert fusion_rule(d, "evidence_weighted").p[0] == 0.3

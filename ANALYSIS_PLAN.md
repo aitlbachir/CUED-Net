@@ -156,3 +156,16 @@ Confirmatory claims, in order, DenseNet-121 arm first, then the ConvNeXt-T arm:
 Equivalence is never claimed on the held-out split. Comparisons across backbones are
 reported as a backbone effect, not as a method effect.
 
+Also reported, added on 5 November 2026 before any held-out evaluation, after rereading the
+reviewer comments. None of these changes a confirmatory claim:
+- The literal test asked by reviewer R3.2, view term added to the evidential term alone,
+  and to the ambiguity term alone, beside the H(p) comparison.
+- Dependence between the three terms: Spearman, distance correlation and kNN mutual
+  information, with 999 permutations of whole patients among patients of equal size.
+- Sensitivity among referred malignant cases, beside sensitivity among accepted cases.
+- Fusion rule from saved outputs, no retraining: evidence-weighted, equal weights,
+  view with more evidence, CC only, MLO only.
+- Share of cases with the two views on opposite sides of 0.5, error rate in each group,
+  and the error rate by terciles of the two terms.
+`evaluation/p2_analysis.py` ranks CUED-Net by H(p) and keeps the score of section 5 as
+`cued_net_fitted`, so both results come from one script run.

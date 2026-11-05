@@ -7,10 +7,14 @@ estimates single-model performance and repeated seeds add no sample size.
 Deep-Ensemble averages the seed models of a fold and gives one prediction per case.
 
 Choices (temperature, thresholds, score weights) use inner validation only.
+
+CUED-Net is ranked by the fused predictive entropy H(p), as amended in section 12 of
+ANALYSIS_PLAN.md. The score fitted under section 5 stays in the output as `*_fitted`.
 """
 
 import argparse
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -20,13 +24,25 @@ from scipy.optimize import minimize_scalar
 from scipy.stats import rankdata, spearmanr
 from sklearn.feature_selection import mutual_info_regression
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from evaluation.decomposition import add_decomposition
+
 METHOD_LABELS = {
     "cued_net": "CUED-Net", "tmc": "TMC", "softmax_dual": "Softmax dual-view", "mc_dropout": "MC-Dropout",
     "deep_ensemble": "Deep-Ensemble", "sv_edl": "Single-view EDL", "cross_view": "Cross-view transformer",
     "cued_convnext": "CUED-Net ConvNeXt-T", "cued_r1_kl": "CUED-Net R1 loss",
 }
-REFERENCE = "cued_net"
-COMPARATORS = ["tmc", "deep_ensemble", "mc_dropout", "cross_view", "sv_edl"]
+# One arm per backbone. A method comparison never crosses backbones.
+ARMS = {
+    "densenet121": dict(reference="cued_net", softmax="softmax_dual", suffix="",
+                        comparators=["tmc", "tmc_entropy", "deep_ensemble", "mc_dropout", "softmax_dual", "cross_view", "sv_edl", "sv_edl_entropy"]),
+    "convnext_tiny": dict(reference="cued_convnext", softmax="softmax_convnext", suffix="_convnext",
+                          comparators=["tmc_convnext", "tmc_convnext_entropy", "deep_ensemble_convnext", "mc_dropout_convnext",
+                                       "softmax_convnext", "cross_view_convnext", "sv_edl_convnext", "sv_edl_convnext_entropy"]),
+}
+CUED_MODELS = ["cued_net", "cued_convnext", "cued_r1_kl"]
+VACUITY_MODELS = ["tmc", "sv_edl", "tmc_convnext", "sv_edl_convnext"]
+ALL_MODELS = CUED_MODELS + VACUITY_MODELS + ["softmax_dual", "softmax_convnext", "cross_view", "cross_view_convnext"]
 EQUIVALENCE_MARGIN = 0.03
 EPS = 1e-6
 
@@ -79,7 +95,8 @@ def add_scores(df):
     if "u_cc" in df:
         df["u_evid"] = 0.5 * (df.u_cc + df.u_mlo)
         df["u_disc"] = 1.0 - np.exp(-df.d_sym)
-    return df
+    df["entropy"] = binary_entropy(df.p.values)
+    return add_decomposition(df)
 
 
 def fit_error_model(X, e, iters=30, ridge=1e-6):
@@ -279,6 +296,7 @@ def all_metrics(m, idx):
             rows[f"coverage_{tag}"].append(acc.mean())
             mal = yy == 1
             rows[f"sens_accepted_{tag}"].append((d & acc & mal).sum() / max(1, (acc & mal).sum()))
+            rows[f"sens_referred_{tag}"].append((d & refer & mal).sum() / max(1, (refer & mal).sum()))
             rows[f"malignant_referred_{tag}"].append((refer & mal).sum() / max(1, mal.sum()))
             rows[f"errors_captured_{tag}"].append((refer & (err > 0)).sum() / max(1, (err > 0).sum()))
             rows[f"accuracy_accepted_{tag}"].append(1 - err[acc].mean() if acc.any() else np.nan)
@@ -414,6 +432,107 @@ def dependence(m, ens_var=None, perms=999, seed=7):
     return out
 
 
+def cluster_permutation(group, rng):
+    """Permute whole patients among patients with the same number of cases."""
+    members = defaultdict(list)
+    for i, g in enumerate(group):
+        members[g].append(i)
+    by_size = defaultdict(list)
+    for idx in members.values():
+        by_size[len(idx)].append(idx)
+    perm = np.arange(len(group))
+    for lists in by_size.values():
+        for a, j in zip(lists, rng.permutation(len(lists))):
+            perm[a] = lists[j]
+    return perm
+
+
+def term_dependence(terms, group, perms=999, seed=7):
+    """Dependence between the three terms, per case, averaged across seeds. Patients are permuted."""
+    rng = np.random.default_rng(seed)
+    names = list(terms)
+    out = {}
+    for a in range(len(names)):
+        for b in range(a + 1, len(names)):
+            x, y = terms[names[a]], terms[names[b]]
+            obs = dict(spearman=float(spearmanr(x, y)[0]), distance_correlation=distance_correlation(x, y),
+                       mutual_information=float(mutual_info_regression(x[:, None], y, random_state=0)[0]))
+            null = defaultdict(list)
+            for _ in range(perms):
+                yp = y[cluster_permutation(group, rng)]
+                null["spearman"].append(abs(spearmanr(x, yp)[0]))
+                null["distance_correlation"].append(distance_correlation(x, yp))
+                null["mutual_information"].append(mutual_info_regression(x[:, None], yp, random_state=0)[0])
+            out[f"{names[a]}_vs_{names[b]}"] = {k: dict(value=v, p=float((1 + np.sum(np.array(null[k]) >= abs(v))) / (perms + 1)))
+                                                 for k, v in obs.items()}
+    return out
+
+
+def paired(point, dist, a, b, metric="aurc"):
+    d = dist[a][metric] - dist[b][metric]
+    d = d[~np.isnan(d)]
+    return dict(value=point[a][metric] - point[b][metric], ci95=np.percentile(d, [2.5, 97.5]).tolist(),
+                p=float(max(min(1, 2 * min((d <= 0).mean(), (d >= 0).mean())), 1 / (len(d) + 1))))
+
+
+def view_term(iv, ov, B):
+    """Referral value of the view term. The first row is confirmatory claim 1, the others answer R3.2 literally."""
+    iv, ov = iv.copy(), ov.copy()
+    for d in (iv, ov):
+        d["u_ev_vd"], d["u_amb_vd"] = d.u_ev + d.u_vd, d.u_amb + d.u_vd
+    cols = ["u_total", "u_within", "u_amb", "u_amb_vd", "u_ev", "u_ev_vd", "u_vd"]
+    models = {c: Prepared(iv, ov, unc=c) for c in cols}
+    group = models["u_total"].group
+    point, dist = bootstrap_all(models, group, B)
+    keep = ("aurc", "eaurc", "error_auroc", "errors_captured_80")
+    out = dict(scores={c: {k: point[c][k] for k in keep} for c in cols})
+    for tag, a, b in [("total_vs_within", "u_total", "u_within"), ("amb_plus_view_vs_amb", "u_amb_vd", "u_amb"),
+                      ("evidential_plus_view_vs_evidential", "u_ev_vd", "u_ev")]:
+        out[tag] = dict(aurc=paired(point, dist, a, b), error_auroc=paired(point, dist, a, b, "error_auroc"))
+    return out
+
+
+def view_conflict(ov):
+    """Share of cases whose two views fall on opposite sides of 0.5, and the error rate in each group."""
+    d = ov.assign(conflict=(ov.p_cc >= 0.5) != (ov.p_mlo >= 0.5), err=(ov.p >= 0.5).astype(int) != ov.label)
+    g = d.groupby("seed").apply(lambda t: pd.Series(dict(share=t.conflict.mean(), error_conflict=t.err[t.conflict].mean(),
+                                                         error_agreement=t.err[~t.conflict].mean())), include_groups=False)
+    return {k: float(v) for k, v in g.mean().items()}
+
+
+def error_by_tercile(ov, row="u_within", col="u_vd"):
+    """Error rate by terciles of two terms, seed by seed, then averaged."""
+    tables = []
+    for _, t in ov.groupby("seed"):
+        e = ((t.p >= 0.5).astype(int) != t.label).astype(float).values
+        a = np.digitize(t[row], np.quantile(t[row], [1 / 3, 2 / 3]))
+        b = np.digitize(t[col], np.quantile(t[col], [1 / 3, 2 / 3]))
+        tables.append([[float(e[(a == i) & (b == j)].mean()) for j in range(3)] for i in range(3)])
+    return np.mean(tables, axis=0).tolist()
+
+
+def fusion_rule(df, rule):
+    """Replace the fused probability by another rule, using saved per-view outputs only."""
+    d = df.copy()
+    if rule == "equal":
+        d["p"] = 0.5 * (d.p_cc + d.p_mlo)
+    elif rule == "max_evidence":
+        d["p"] = np.where(d.s_cc >= d.s_mlo, d.p_cc, d.p_mlo)
+    elif rule in ("cc", "mlo"):
+        d["p"] = d[f"p_{rule}"]
+    d["entropy"] = binary_entropy(d.p.values)
+    return d
+
+
+def fusion_ablation(iv, ov, B):
+    rules = ["evidence_weighted", "equal", "max_evidence", "cc", "mlo"]
+    models = {r: Prepared(fusion_rule(iv, r), fusion_rule(ov, r), unc="entropy") for r in rules}
+    point, dist = bootstrap_all(models, models[rules[0]].group, B)
+    return dict(summary={r: {k: dict(value=point[r][k], ci95=np.percentile(dist[r][k], [2.5, 97.5]).tolist()) for k in ("auc", "f1", "aurc")}
+                         for r in rules},
+                against_evidence_weighted=compare(point, dist, rules[0], rules[1:], metrics=("auc", "f1", "aurc")))
+
+
 def decision_curve(y, p, grid=np.arange(0.05, 0.51, 0.05)):
     rows = []
     for t in grid:
@@ -445,41 +564,59 @@ def main():
     ap.add_argument("--inner_fold", type=int, default=None, help="fold id that provides inner validation for --split test")
     ap.add_argument("--B", type=int, default=10000)
     ap.add_argument("--B_added", type=int, default=2000)
+    ap.add_argument("--perms", type=int, default=999)
     ap.add_argument("--multi_mass", default=None, help="json list of pair keys to exclude in the sensitivity analysis")
     args = ap.parse_args()
 
     tables = {m: (add_scores(read_split(args.runs, m, "inner_val")), add_scores(read_split(args.runs, m, args.split)))
-              for m in ["cued_net", "tmc", "softmax_dual", "sv_edl", "cross_view", "cued_convnext", "cued_r1_kl"]
-              if read_split(args.runs, m, args.split) is not None}
+              for m in ALL_MODELS if read_split(args.runs, m, args.split) is not None}
     if args.split != "outer_val":
         tables = {k: (i[i.fold == -1], o) for k, (i, o) in tables.items()}
-    models = {}
+    models, fitted = {}, {}
     for name, (iv, ov) in tables.items():
-        models[name] = Prepared(iv, ov)
-        if name == "softmax_dual":
-            models["mc_dropout"] = Prepared(iv, ov, prob="mc_p", unc="mc_entropy")
-            models["deep_ensemble"] = as_ensemble(models[name], iv, ov)
-    ref = models[REFERENCE]
+        if name in CUED_MODELS:
+            models[name] = Prepared(iv, ov, unc="u_total")
+            fitted[name] = Prepared(iv, ov)
+            models[f"{name}_fitted"] = fitted[name]
+        elif name in VACUITY_MODELS:
+            models[name] = Prepared(iv, ov, unc="vacuity")
+            models[f"{name}_entropy"] = Prepared(iv, ov, unc="entropy")
+        elif name.startswith("softmax"):
+            suffix = name.replace("softmax", "").replace("_dual", "")
+            models[name] = Prepared(iv, ov, unc="entropy")
+            models[f"mc_dropout{suffix}"] = Prepared(iv, ov, prob="mc_p", unc="mc_entropy")
+            models[f"deep_ensemble{suffix}"] = as_ensemble(models[name], iv, ov)
+        else:
+            models[name] = Prepared(iv, ov, unc="entropy")
+    ref = models["cued_net"]
     group = ref.group
     for k, v in models.items():
-        assert v.keys == ref.keys or k == "sv_edl", k
+        assert v.keys == ref.keys, k
 
     point, dist = bootstrap_all(models, group, args.B)
-    others = [c for c in COMPARATORS if c in models]
-    result = dict(split=args.split, n_cases=len(ref.keys), n_patients=int(group.max() + 1), B=args.B,
-                  summary=summarise(point, dist), comparison=compare(point, dist, REFERENCE, others),
+    result = dict(split=args.split, n_cases=len(ref.keys), n_patients=int(group.max() + 1), B=args.B, summary=summarise(point, dist),
                   temperature={k: dict(mean=float(np.mean(v.temperatures)), std=float(np.std(v.temperatures))) for k, v in models.items()},
-                  added_value=added_value(ref, args.B_added),
-                  weight_sensitivity=weight_sensitivity(ref))
-    ens_var = None
-    if "softmax_dual" in models:
-        ens_var = np.nanvar(models["softmax_dual"].p, axis=0, ddof=1)
-    result["dependence"] = dependence(ref, ens_var)
+                  arms={})
+    for arm, spec in ARMS.items():
+        reference = spec["reference"]
+        if reference not in tables:
+            continue
+        iv, ov = tables[reference]
+        terms = {c: ov.groupby("pair_key")[c].mean().reindex(models[reference].keys).values for c in ("u_amb", "u_ev", "u_vd")}
+        others = [c for c in spec["comparators"] if c in models]
+        result["arms"][arm] = dict(reference=reference, comparison=compare(point, dist, reference, others),
+                                   view_term=view_term(iv, ov, args.B_added), view_conflict=view_conflict(ov),
+                                   error_by_tercile=error_by_tercile(ov), term_dependence=term_dependence(terms, group, args.perms),
+                                   term_means={c: float(v.mean()) for c, v in terms.items()},
+                                   fusion_ablation=fusion_ablation(iv, ov, args.B_added),
+                                   prespecified_fitted_score=dict(added_value=added_value(fitted[reference], args.B_added),
+                                                                  weight_sensitivity=weight_sensitivity(fitted[reference])))
+    ens_var = np.nanvar(models["softmax_dual"].p, axis=0, ddof=1) if "softmax_dual" in models else None
+    result["prespecified_dependence"] = dependence(fitted["cued_net"], ens_var, args.perms)
     result["decision_curve"] = {k: decision_curve(models[k].y, np.nanmean(models[k].p_cal, axis=0)) for k in models}
     if args.multi_mass:
         drop = set(json.load(open(args.multi_mass)))
-        keep = np.array([k not in drop for k in ref.keys])
-        idx = np.where(keep)[0]
+        idx = np.where([k not in drop for k in ref.keys])[0]
         result["excluding_multi_mass"] = {k: {x: all_metrics(v, idx)[x] for x in ("auc", "f1", "aurc")} for k, v in models.items()}
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     json.dump(result, open(args.out, "w"), indent=1)

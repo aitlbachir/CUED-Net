@@ -95,6 +95,8 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pairs = load_manifest(args.manifest)["pairs"]
+    groups = [{p["patient_id"] for p in pairs if p["split"] == s} for s in ("adapt_train", "adapt_val", "eval")]
+    assert sum(map(len, groups)) == len(set().union(*groups)), "a patient appears in more than one CMMD split"
     cache = ImageCache(args.patches)
     cache.preload(pairs)
     out = Path(args.out)
