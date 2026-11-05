@@ -235,3 +235,8 @@ The design may be corrected once on a development pilot: the fold checkpoints of
 on the outer folds. Any correction is committed before the held-out run and is disclosed.
 On the held-out split the changes run once, after the locked evaluation, on the reference
 model of each arm.
+
+Case figure, rule fixed 5 November 2026 (`cued_net`, outer folds, per case, mean across seeds).
+Strata by terciles of U_amb + U_evid and of U_vd: low and low, correct; high and low; low and
+high, correct; low and high, wrong. A case counts as wrong when most seeds err. Each stratum
+gives the case whose H(p) is closest to the stratum median. No case is chosen by eye.
