@@ -180,6 +180,12 @@ a sensitivity result, outside the Holm family. `cued_net_k5` is trained next and
 the same rule against `cued_net`. Evidence scale is the one setting selected for CUED-Net
 alone, and the comparators keep scale 1.
 
+Outcome for DenseNet-121, 5 November 2026, read before the outer folds of `cued_net_k5`.
+Inner AURC of H(p) 0.1276 against 0.1238 for `cued_net`, inner NLL before temperature 0.481
+against 0.526. Only one of the two conditions holds, so `cued_net` stays the primary model at
+scale 1. The two arms therefore differ in evidence scale, as the rule decided: DenseNet-121 at
+scale 1 and ConvNeXt-T at scale 5.
+
 ## 13. Checks of what each term measures
 Added 5 November 2026 and revised the same day, before the held-out split was evaluated and
 before any radiologist annotation was joined to a prediction. The revision used only the
