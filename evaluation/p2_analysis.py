@@ -32,14 +32,18 @@ METHOD_LABELS = {
     "deep_ensemble": "Deep-Ensemble", "sv_edl": "Single-view EDL", "cross_view": "Cross-view transformer",
     "cued_convnext": "CUED-Net ConvNeXt-T", "cued_r1_kl": "CUED-Net R1 loss",
 }
-# One arm per backbone. A method comparison never crosses backbones.
+# One arm per backbone. A method comparison never crosses backbones. The Holm family is the
+# five comparators of section 5, and referral metrics add the entropy variants of section 12.
+# Softmax dual-view is reported but sits outside the family.
 ARMS = {
-    "densenet121": dict(reference="cued_net", softmax="softmax_dual", suffix="",
-                        comparators=["tmc", "tmc_entropy", "deep_ensemble", "mc_dropout", "softmax_dual", "cross_view", "sv_edl", "sv_edl_entropy"]),
-    "convnext_tiny": dict(reference="cued_convnext", softmax="softmax_convnext", suffix="_convnext",
-                          comparators=["tmc_convnext", "tmc_convnext_entropy", "deep_ensemble_convnext", "mc_dropout_convnext",
-                                       "softmax_convnext", "cross_view_convnext", "sv_edl_convnext", "sv_edl_convnext_entropy"]),
+    "densenet121": dict(reference="cued_net", comparators=["tmc", "deep_ensemble", "mc_dropout", "cross_view", "sv_edl"],
+                        entropy_variants=["tmc_entropy", "sv_edl_entropy"]),
+    "convnext_tiny": dict(reference="cued_convnext",
+                          comparators=["tmc_convnext", "deep_ensemble_convnext", "mc_dropout_convnext", "cross_view_convnext", "sv_edl_convnext"],
+                          entropy_variants=["tmc_convnext_entropy", "sv_edl_convnext_entropy"]),
 }
+RANKING = ("aurc", "eaurc")
+CLASSIFICATION = ("auc", "f1", "ap", "sensitivity", "specificity", "f1_inner_threshold", "sens_at_90spec", "brier_cal", "nll_cal")
 CUED_MODELS = ["cued_net", "cued_convnext", "cued_r1_kl"]
 VACUITY_MODELS = ["tmc", "sv_edl", "tmc_convnext", "sv_edl_convnext"]
 ALL_MODELS = CUED_MODELS + VACUITY_MODELS + ["softmax_dual", "softmax_convnext", "cross_view", "cross_view_convnext"]
@@ -349,7 +353,7 @@ def summarise(point, dist):
     return out
 
 
-def compare(point, dist, reference, others, metrics=("auc", "f1", "ap", "aurc", "eaurc", "sensitivity", "specificity", "f1_inner_threshold", "sens_at_90spec", "brier_cal", "nll_cal")):
+def compare(point, dist, reference, others, metrics=CLASSIFICATION):
     out = {}
     for metric in metrics:
         raw, rows = {}, {}
@@ -604,7 +608,9 @@ def main():
         iv, ov = tables[reference]
         terms = {c: ov.groupby("pair_key")[c].mean().reindex(models[reference].keys).values for c in ("u_amb", "u_ev", "u_vd")}
         others = [c for c in spec["comparators"] if c in models]
-        result["arms"][arm] = dict(reference=reference, comparison=compare(point, dist, reference, others),
+        ranked = others + [c for c in spec["entropy_variants"] if c in models]
+        comparison = {**compare(point, dist, reference, others), **compare(point, dist, reference, ranked, RANKING)}
+        result["arms"][arm] = dict(reference=reference, comparison=comparison,
                                    view_term=view_term(iv, ov, args.B_added), view_conflict=view_conflict(ov),
                                    error_by_tercile=error_by_tercile(ov), term_dependence=term_dependence(terms, group, args.perms),
                                    term_means={c: float(v.mean()) for c, v in terms.items()},
