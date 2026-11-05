@@ -30,7 +30,7 @@ from evaluation.decomposition import add_decomposition
 METHOD_LABELS = {
     "cued_net": "CUED-Net", "tmc": "TMC", "softmax_dual": "Softmax dual-view", "mc_dropout": "MC-Dropout",
     "deep_ensemble": "Deep-Ensemble", "sv_edl": "Single-view EDL", "cross_view": "Cross-view transformer",
-    "cued_convnext": "CUED-Net ConvNeXt-T", "cued_r1_kl": "CUED-Net R1 loss",
+    "cued_convnext": "CUED-Net ConvNeXt-T, scale 1", "cued_convnext_k5": "CUED-Net ConvNeXt-T", "cued_r1_kl": "CUED-Net R1 loss",
 }
 # One arm per backbone. A method comparison never crosses backbones. The Holm family is the
 # five comparators of section 5, and referral metrics add the entropy variants of section 12.
@@ -38,13 +38,13 @@ METHOD_LABELS = {
 ARMS = {
     "densenet121": dict(reference="cued_net", comparators=["tmc", "deep_ensemble", "mc_dropout", "cross_view", "sv_edl"],
                         entropy_variants=["tmc_entropy", "sv_edl_entropy"]),
-    "convnext_tiny": dict(reference="cued_convnext",
+    "convnext_tiny": dict(reference="cued_convnext_k5",
                           comparators=["tmc_convnext", "deep_ensemble_convnext", "mc_dropout_convnext", "cross_view_convnext", "sv_edl_convnext"],
                           entropy_variants=["tmc_convnext_entropy", "sv_edl_convnext_entropy"]),
 }
 RANKING = ("aurc", "eaurc")
 CLASSIFICATION = ("auc", "f1", "ap", "sensitivity", "specificity", "f1_inner_threshold", "sens_at_90spec", "brier_cal", "nll_cal")
-CUED_MODELS = ["cued_net", "cued_convnext", "cued_r1_kl"]
+CUED_MODELS = ["cued_net", "cued_convnext", "cued_convnext_k5", "cued_r1_kl"]
 VACUITY_MODELS = ["tmc", "sv_edl", "tmc_convnext", "sv_edl_convnext"]
 ALL_MODELS = CUED_MODELS + VACUITY_MODELS + ["softmax_dual", "softmax_convnext", "cross_view", "cross_view_convnext"]
 EQUIVALENCE_MARGIN = 0.03

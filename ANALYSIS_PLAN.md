@@ -169,3 +169,13 @@ reviewer comments. None of these changes a confirmatory claim:
   and the error rate by terciles of the two terms.
 `evaluation/p2_analysis.py` ranks CUED-Net by H(p) and keeps the score of section 5 as
 `cued_net_fitted`, so both results come from one script run.
+
+Outcome of the evidence-scale rule, 5 November 2026, from `evaluation/select_p2.py` on the 25
+inner-validation sets of the outer folds. Inner AURC of H(p) 0.0955 against 0.0992, inner NLL
+before temperature 0.439 against 0.502. `cued_convnext_k5` therefore replaces `cued_convnext`
+in the ConvNeXt-T arm. The decision was made before the outer folds of `cued_convnext_k5`
+were read, and it stands although those outer folds later showed slightly worse values
+(AUC 0.886 against 0.890, AURC 0.089 against 0.086). `cued_convnext` stays in the tables as
+a sensitivity result, outside the Holm family. `cued_net_k5` is trained next and judged by
+the same rule against `cued_net`. Evidence scale is the one setting selected for CUED-Net
+alone, and the comparators keep scale 1.
