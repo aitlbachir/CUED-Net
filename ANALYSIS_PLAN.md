@@ -137,12 +137,22 @@ Backbone. Each comparator is retrained with ConvNeXt-T under the same protocol, 
 method comparison is never confounded with a backbone comparison.
 
 Selection rules, fixed before those runs. All use inner validation of the outer folds:
-- Primary backbone: ConvNeXt-T if it has the higher mean selection score and the lower
-  mean inner-validation AURC of H(p). DenseNet-121 results stay reported.
-- Evidence scale: `cued_convnext_k5` replaces `cued_convnext` only if it has both the
-  lower inner-validation AURC of H(p) and the lower inner-validation NLL before
-  temperature scaling.
+- Primary backbone: DenseNet-121, the configuration under review. ConvNeXt-T is a
+  complete second arm with its own comparators, reported as the data show, and is not
+  selected as primary. This line replaces an earlier wording of 5 November and was
+  fixed before any result of the ConvNeXt-T comparators existed.
+- Evidence scale: `cued_convnext_k5` replaces `cued_convnext` in the ConvNeXt-T arm only
+  if it has both the lower inner-validation AURC of H(p) and the lower inner-validation
+  NLL before temperature scaling. If it does, the same scale is trained for DenseNet-121
+  and judged by the same rule.
 The number of variants tried is reported. The outer folds informed this amendment, so
 outer-fold differences that favour the amended method are labelled post hoc. The held-out
 split is the confirmatory evaluation, and it runs once for all locked methods.
+
+Confirmatory claims, in order, DenseNet-121 arm first, then the ConvNeXt-T arm:
+1. The cross-view term lowers AURC: H(p) against the sum of the other two terms.
+2. AURC of CUED-Net H(p) against each same-backbone comparator, under vacuity and entropy
+   where both exist, with Holm correction per arm.
+Equivalence is never claimed on the held-out split. Comparisons across backbones are
+reported as a backbone effect, not as a method effect.
 
