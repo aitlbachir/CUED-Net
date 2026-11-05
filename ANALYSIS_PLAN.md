@@ -181,26 +181,42 @@ the same rule against `cued_net`. Evidence scale is the one setting selected for
 alone, and the comparators keep scale 1.
 
 ## 13. Checks of what each term measures
-Added 5 November 2026, before the held-out split was evaluated and before the radiologist
-annotations were joined to any prediction. These checks are descriptive, they sit outside
-the confirmatory claims, and they are reported whatever they show.
+Added 5 November 2026 and revised the same day, before the held-out split was evaluated and
+before any radiologist annotation was joined to a prediction. The revision used only the
+annotation tables: 82% of development pairs have the same subtlety in both views and only 22
+differ in BI-RADS, so a correlation with those gaps alone would have little power. These
+checks are descriptive, they sit outside the confirmatory claims, and they are reported
+whatever they show. Each is read on the development outer folds and then repeated on the
+held-out split in the locked evaluation.
 
-Controlled changes, run once after the locked evaluation on the reference model of each
-arm, five seeds, held-out split (`evaluation/term_response_p2.py`). Each change is compared
-with the clean output of the same case, with a patient-clustered bootstrap.
-- swap_opposite: the MLO view is replaced by the MLO view of another patient with the
-  opposite label.
-- swap_same: the same, with a patient of the same label.
-- blur: both views blurred, Gaussian sigma 3 pixels at 224 by 224.
-Expected: view discordance uncertainty rises more under swap_opposite than under swap_same.
-No direction is assumed for blur.
+Two ratios separate what the raw terms mix, because U_amb and U_evid both shrink as p leaves
+0.5: the evidential share U_evid / (U_amb + U_evid), and the view share U_vd / H(p).
 
-Radiologist annotations, outer folds, per case, mean across seeds (`evaluation/anchor_p2.py`).
-CBIS-DDSM records a subtlety rating and a BI-RADS assessment for each view of a lesion.
-- Spearman correlation of view discordance uncertainty with the absolute difference between
-  the CC and MLO subtlety ratings, and with the same difference in BI-RADS assessment.
-  Expected: positive.
-- Spearman correlation of H(p) and of the within-view terms with the mean subtlety rating,
-  where a higher rating means a more obvious lesion. Expected: negative.
-- Mean view discordance uncertainty and error rate for rating differences of 0, 1, and 2 or more.
-Permutations of whole patients, 999. No confirmatory claim rests on these.
+Radiologist annotations (`evaluation/anchor_p2.py`, `data/export_lesion_meta.py`). CBIS-DDSM
+records subtlety, BI-RADS, shape and margins for each view of a lesion. Ratings of 0 are
+treated as missing. Per case, mean across seeds. Whole patients are permuted, 9,999 times,
+with Holm correction across the four tests of one arm.
+1. Described differently: the CC and MLO records differ in any of the four fields (179 of 528
+   development pairs, 52 of 154 held-out pairs). Effect: probability that such a case has the
+   higher U_vd. Expected above 0.5.
+2. U_vd against the subtlety difference between views. Expected positive.
+3. H(p) against the mean subtlety, where a higher rating means a more obvious lesion.
+   Expected negative.
+4. Evidential share against the mean subtlety. Expected negative, since a subtle lesion should
+   give less evidence.
+Also reported without a test of its own: mean U_vd and error rate for subtlety differences of
+0, 1, and 2 or more, and the contrast for BI-RADS differences, which rests on few cases.
+
+Controlled changes (`evaluation/term_response_p2.py`). Each change is compared with the clean
+output of the same case, with a patient-clustered bootstrap.
+- swap_opposite: the MLO view is replaced by the MLO view of another patient with the opposite
+  label, three random draws. swap_same: the same with a patient of the same label.
+- blur at sigma 1.5, 3 and 6 pixels at 224 by 224, on both views.
+- occlusion of the central 25% and 50% of the patch side on both views, where the lesion sits.
+Expected: U_vd and the view share rise more under swap_opposite than under swap_same, and the
+evidential share rises with the severity of blur and occlusion.
+
+The design may be corrected once on a development pilot: the fold checkpoints of `cued_net`
+on the outer folds. Any correction is committed before the held-out run and is disclosed.
+On the held-out split the changes run once, after the locked evaluation, on the reference
+model of each arm.

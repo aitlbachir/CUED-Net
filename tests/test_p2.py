@@ -239,3 +239,21 @@ def test_swapped_views_come_from_other_patients():
             source = owner[q["mlo"]]
             assert q["cc"] == p["cc"] and source["patient_id"] != p["patient_id"]
             assert (source["label"] == p["label"]) == same
+
+
+def test_occlusion_only_touches_the_center():
+    import torch
+    from evaluation.term_response_p2 import Occlude
+    x = torch.ones(3, 224, 224)
+    y = Occlude(0.5)(x)
+    assert y[:, 112, 112].abs().sum() == 0 and y[:, 0, 0].sum() == 3 and x.sum() == 3 * 224 ** 2
+    assert (y == 0).sum() == 3 * 112 ** 2
+
+
+def test_annotation_disagreement_ignores_missing_ratings():
+    import pandas as pd
+    from evaluation.anchor_p2 import annotate
+    t = annotate(pd.DataFrame(dict(subtlety_CC=[3, 0, 3], subtlety_MLO=[3, 4, 5], assessment_CC=[4, 4, 4], assessment_MLO=[4, 0, 4],
+                                   shape_CC=["OVAL"] * 3, shape_MLO=["OVAL"] * 3, margins_CC=["X"] * 3, margins_MLO=["X"] * 3)))
+    assert t.described_differently.tolist() == [False, False, True]
+    assert t.subtlety_mean.tolist() == [3.0, 4.0, 4.0]

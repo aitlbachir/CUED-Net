@@ -1,4 +1,4 @@
-"""Do the terms follow what radiologists recorded? Descriptive, outer folds. ANALYSIS_PLAN.md section 13."""
+"""Do the terms follow what radiologists recorded? Descriptive. ANALYSIS_PLAN.md section 13."""
 
 import argparse
 import json
@@ -6,25 +6,55 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.stats import spearmanr
+from scipy.stats import rankdata, spearmanr
 
-from p2_analysis import add_scores, cluster_permutation, read_split
+from p2_analysis import add_scores, cluster_permutation, holm, read_split
 
-PAIRS = [("subtlety_gap", "u_vd"), ("assessment_gap", "u_vd"), ("subtlety_mean", "u_total"), ("subtlety_mean", "u_within")]
+VALUES = ["u_amb", "u_ev", "u_vd", "u_within", "u_total", "share_evid", "error"]
 
 
-def case_table(runs, method, meta):
-    d = add_scores(read_split(runs, method, "outer_val"))
-    d["error"] = ((d.p >= 0.5).astype(int) != d.label).astype(float)
-    t = d.groupby(["pair_key", "patient_id"], as_index=False)[["u_amb", "u_ev", "u_vd", "u_within", "u_total", "error"]].mean()
-    t = t.merge(meta, left_on="pair_key", right_on="key", how="left", validate="1:1")
+def annotate(t):
+    """Ratings of 0 are not ratings: subtlety 0 is invalid and BI-RADS 0 means an incomplete assessment."""
+    for c in ("subtlety_CC", "subtlety_MLO", "assessment_CC", "assessment_MLO"):
+        t[c] = t[c].where(t[c] > 0)
+    both = lambda a, b: a.notna() & b.notna() & (a != b)
+    t["subtlety_differs"] = both(t.subtlety_CC, t.subtlety_MLO)
+    t["assessment_differs"] = both(t.assessment_CC, t.assessment_MLO)
+    t["shape_differs"] = t.shape_CC.fillna("none") != t.shape_MLO.fillna("none")
+    t["margins_differs"] = t.margins_CC.fillna("none") != t.margins_MLO.fillna("none")
+    t["described_differently"] = t.subtlety_differs | t.assessment_differs | t.shape_differs | t.margins_differs
     t["subtlety_gap"] = (t.subtlety_CC - t.subtlety_MLO).abs()
-    t["assessment_gap"] = (t.assessment_CC - t.assessment_MLO).abs()
-    t["subtlety_mean"] = 0.5 * (t.subtlety_CC + t.subtlety_MLO)
+    t["subtlety_mean"] = t[["subtlety_CC", "subtlety_MLO"]].mean(axis=1)
     return t
 
 
-def permutation_rho(t, x, y, perms=999, seed=7):
+def case_table(runs, method, meta, split):
+    d = add_scores(read_split(runs, method, split))
+    d["share_evid"] = d.u_ev / (d.u_amb + d.u_ev)
+    d["error"] = ((d.p >= 0.5).astype(int) != d.label).astype(float)
+    t = d.groupby(["pair_key", "patient_id"], as_index=False)[VALUES].mean()
+    return annotate(t.merge(meta, left_on="pair_key", right_on="key", how="left", validate="1:1"))
+
+
+def rank_auc(values, flag):
+    r = rankdata(values)
+    n1, n0 = flag.sum(), (~flag).sum()
+    return (r[flag].sum() - n1 * (n1 + 1) / 2) / (n1 * n0)
+
+
+def group_contrast(t, flag, y, perms=999, seed=7):
+    """Probability that a flagged case has the higher value, with whole patients permuted."""
+    f, v = t[flag].values, t[y].values
+    group = pd.factorize(t.patient_id)[0]
+    auc = float(rank_auc(v, f))
+    rng = np.random.default_rng(seed)
+    null = [abs(rank_auc(v[cluster_permutation(group, rng)], f) - 0.5) for _ in range(perms)]
+    return dict(n_flagged=int(f.sum()), n_other=int((~f).sum()), mean_flagged=float(v[f].mean()), mean_other=float(v[~f].mean()),
+                error_flagged=float(t.error.values[f].mean()), error_other=float(t.error.values[~f].mean()), auc=auc,
+                p=float((1 + np.sum(np.array(null) >= abs(auc - 0.5))) / (perms + 1)))
+
+
+def rank_correlation(t, x, y, perms=999, seed=7):
     s = t.dropna(subset=[x, y])
     a, b = s[x].values, s[y].values
     group = pd.factorize(s.patient_id)[0]
@@ -34,9 +64,20 @@ def permutation_rho(t, x, y, perms=999, seed=7):
     return dict(n=len(s), rho=rho, p=float((1 + np.sum(np.array(null) >= abs(rho))) / (perms + 1)))
 
 
-def by_gap(t, column):
-    g = t.dropna(subset=[column]).assign(level=lambda d: d[column].clip(upper=2).astype(int))
+def levels(t):
+    g = t.dropna(subset=["subtlety_gap"]).assign(level=lambda d: d.subtlety_gap.clip(upper=2).astype(int))
     return {str(k): dict(n=int(len(v)), u_vd=float(v.u_vd.mean()), error=float(v.error.mean())) for k, v in g.groupby("level")}
+
+
+def analyse(t, perms):
+    tests = dict(described_differently=group_contrast(t, "described_differently", "u_vd", perms),
+                 subtlety_gap=rank_correlation(t, "subtlety_gap", "u_vd", perms),
+                 entropy_with_subtlety=rank_correlation(t, "subtlety_mean", "u_total", perms),
+                 evidential_share_with_subtlety=rank_correlation(t, "subtlety_mean", "share_evid", perms))
+    for k, adj in zip(tests, holm([v["p"] for v in tests.values()])):
+        tests[k]["p_holm"] = float(adj)
+    return dict(n=len(t), unmatched=int(t.subtlety_mean.isna().sum()), tests=tests, subtlety_gap_levels=levels(t),
+                assessment_differs=group_contrast(t, "assessment_differs", "u_vd", perms))
 
 
 def main():
@@ -44,15 +85,12 @@ def main():
     ap.add_argument("--runs", required=True)
     ap.add_argument("--meta", required=True)
     ap.add_argument("--methods", default="cued_net,cued_convnext_k5")
+    ap.add_argument("--split", default="outer_val")
+    ap.add_argument("--perms", type=int, default=9999)
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     meta = pd.read_csv(args.meta)
-    result = {}
-    for method in args.methods.split(","):
-        t = case_table(args.runs, method, meta)
-        result[method] = dict(unmatched=int(t.subtlety_CC.isna().sum()),
-                              correlation={f"{x}_vs_{y}": permutation_rho(t, x, y) for x, y in PAIRS},
-                              by_subtlety_gap=by_gap(t, "subtlety_gap"), by_assessment_gap=by_gap(t, "assessment_gap"))
+    result = {m: analyse(case_table(args.runs, m, meta, args.split), args.perms) for m in args.methods.split(",")}
     Path(args.out).write_text(json.dumps(result, indent=1))
     print(json.dumps(result, indent=1))
 
