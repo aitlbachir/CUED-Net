@@ -234,6 +234,19 @@ evidential share rises with the severity of blur and occlusion.
 
 The design may be corrected once on a development pilot: the fold checkpoints of `cued_net`
 on the outer folds. Any correction is committed before the held-out run and is disclosed.
+
+Development pilot of 6 November 2026, reported as read (25 fold checkpoints of `cued_net`,
+2,640 case outputs per condition, mean over seeds per case, 10,000 patient-clustered bootstrap
+draws). The recomputed clean outputs equal the stored outer-fold outputs (largest absolute
+difference 0, AUC 0.859). swap_opposite raised U_vd by 0.046 bits [0.041, 0.052] from a clean
+mean of 0.027, and swap_same by 0.013 [0.010, 0.017]. Neither swap changed U_amb or U_evid
+(all four intervals include 0). The rise under swap_opposite held in every fold and every draw
+(0.026 to 0.070). Blur and occlusion raised U_amb (+0.017 to +0.053) and U_evid (+0.004 to
++0.012), while U_vd stayed flat or fell (-0.009 to +0.000). The evidential share rose with
+occlusion (+0.001, +0.003) but not monotonically with blur (+0.001, +0.001, -0.001). The
+replacement view of a swap is drawn by label, so the AUC under swap_same rises (0.90 to 0.91) and the
+AUC under either swap is not reported as performance. No design correction follows: the
+held-out run uses the design as written above.
 On the held-out split the changes run once, after the locked evaluation, on the reference
 model of each arm.
 
