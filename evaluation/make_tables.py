@@ -18,6 +18,14 @@ def ci(v, d=3):
     return f"{v['value']:.{d}f} [{v['ci95'][0]:.{d}f}, {v['ci95'][1]:.{d}f}]"
 
 
+def sg(x):
+    return f"{x:+.3f}".replace("-", "$-$")
+
+
+def p_text(p):
+    return "$<$0.001" if p < 0.001 else f"{p:.3f}"
+
+
 def table(columns, rows, caption, label, wide=True):
     env = "table*" if wide else "table"
     head = " & ".join(columns) + r" \\"
@@ -62,9 +70,9 @@ def view_term(r, what):
         rows.append(rf"\multicolumn{{3}}{{l}}{{\textit{{{ARM_NAMES[arm]}}}}} \\")
         for key, name in names:
             v = a["view_term"][key]["aurc"]
-            rows.append(f"{name} & {v['value']:+.3f} [{v['ci95'][0]:+.3f}, {v['ci95'][1]:+.3f}] & {v['p']:.3f} " + r"\\")
+            rows.append(f"{name} & {sg(v['value'])} [{sg(v['ci95'][0])}, {sg(v['ci95'][1])}] & {p_text(v['p'])} " + r"\\")
         f = a["prespecified_fitted_score"]["added_value"]["delta_aurc"]
-        rows.append(f"Fitted score, pre-specified & {f['value']:+.3f} [{f['ci95'][0]:+.3f}, {f['ci95'][1]:+.3f}] & {f['p']:.3f} " + r"\\")
+        rows.append(f"Fitted score, pre-specified & {sg(f['value'])} [{sg(f['ci95'][0])}, {sg(f['ci95'][1])}] & {p_text(f['p'])} " + r"\\")
     return table(["Change in AURC when $U^{\\mathrm{vd}}$ is added", "Difference [95\\% CI]", "$p$"], rows,
                  f"Referral value of view discordance uncertainty, {what}. A negative difference favors adding the term.", "tab:viewterm", wide=False)
 
