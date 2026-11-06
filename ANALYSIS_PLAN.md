@@ -223,7 +223,8 @@ difference in S: +0.12 (p 0.15) and +0.55 (p 0.03). It is tested once on the hel
 outside the Holm family, where only about 31 pairs qualify.
 
 Controlled changes (`evaluation/term_response_p2.py`). Each change is compared with the clean
-output of the same case, with a patient-clustered bootstrap.
+output of the same case, recomputed by the same script and model, with a patient-clustered
+bootstrap.
 - swap_opposite: the MLO view is replaced by the MLO view of another patient with the opposite
   label, three random draws. swap_same: the same with a patient of the same label.
 - blur at sigma 1.5, 3 and 6 pixels at 224 by 224, on both views.

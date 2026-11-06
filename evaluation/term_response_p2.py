@@ -54,7 +54,8 @@ class Occlude:
 
 
 def run_conditions(model, pairs, cache, device, folder, method, fold, seed):
-    jobs = [(f"{n}_{d}", swapped(pairs, same, d), eval_transform()) for n, same in SWAPS.items() for d in SWAP_DRAWS]
+    jobs = [("clean", pairs, eval_transform())]
+    jobs += [(f"{n}_{d}", swapped(pairs, same, d), eval_transform()) for n, same in SWAPS.items() for d in SWAP_DRAWS]
     jobs += [(n, pairs, T.Compose([eval_transform(), T.GaussianBlur(25, s)])) for n, s in BLUR.items()]
     jobs += [(n, pairs, T.Compose([eval_transform(), Occlude(f)])) for n, f in OCCLUDE.items()]
     folder.mkdir(parents=True, exist_ok=True)
@@ -131,9 +132,9 @@ def main():
     ap.add_argument("--summary", default="")
     args = ap.parse_args()
     if args.summary and args.development:
-        Path(args.summary).write_text(json.dumps(dict(cued_net=summarise(Path(args.runs) / "cued_net", Path(args.out) / "cued_net", "outer_val")), indent=1))
+        Path(args.summary).write_text(json.dumps(dict(cued_net=summarise(Path(args.out) / "cued_net", Path(args.out) / "cued_net", "clean")), indent=1))
     elif args.summary:
-        result = {m: summarise(Path(args.out) / m, Path(args.out) / m, "test") for m in args.methods.split(",")}
+        result = {m: summarise(Path(args.out) / m, Path(args.out) / m, "clean") for m in args.methods.split(",")}
         Path(args.summary).write_text(json.dumps(result, indent=1))
     else:
         run(args)
