@@ -1,8 +1,9 @@
 """Write the numbers quoted in the text as LaTeX macros, from one p2_analysis.py output.
 
 Each arm gets a prefix: DN for DenseNet-121 and CX for ConvNeXt-T. A second analysis, for
-example the held-out split, can use another prefix through --tag, so that text and tables
-read every number from the same files.
+example the held-out split or a CMMD summary, can use another prefix through --tag, so that
+text and tables read every number from the same files. An arm writes only the comparisons
+its analysis holds, so the adapted CMMD summaries (CUED-Net and TMC) need no separate code.
 """
 
 import argparse
@@ -49,6 +50,7 @@ def macros(r, tag):
         for key, name in (("auc", "Auc"), ("f1", "Fone"), ("sensitivity", "Sens"), ("specificity", "Spec"), ("ap", "Ap"),
                           ("ece", "Ece"), ("ece_cal", "EceCal"), ("aurc", "Aurc"), ("eaurc", "Eaurc"), ("error_auroc", "ErrAuroc")):
             out[p + name] = ci(s[key])
+        out[p + "AucPt"] = num(s["auc"]["value"])
         for c in (70, 80, 90):
             word = {70: "Seventy", 80: "Eighty", 90: "Ninety"}[c]
             out[p + "SensAcc" + word] = num(s[f"sens_accepted_{c}"]["value"])
@@ -63,6 +65,7 @@ def macros(r, tag):
         for key, name in (("total_vs_within", "ViewWithin"), ("amb_plus_view_vs_amb", "ViewAmb"), ("evidential_plus_view_vs_evidential", "ViewEvid")):
             v = a["view_term"][key]["aurc"]
             out[p + name] = f"{ci(v, sign=True)}, {pval(v['p'])}"
+            out[p + name + "P"] = pval(v["p"])
         f = a["prespecified_fitted_score"]["added_value"]
         out[p + "Fitted"] = f"{ci(f['delta_aurc'], sign=True)}, {pval(f['delta_aurc']['p'])}"
         out[p + "FittedAurc"] = num(f["point"]["aurc_m1"])
@@ -83,9 +86,11 @@ def macros(r, tag):
         out[p + "ConflictShare"], out[p + "ConflictErr"], out[p + "AgreeErr"] = pct(vc["share"]), pct(vc["error_conflict"]), pct(vc["error_agreement"])
         e = a["error_by_tercile"]
         out[p + "ErrLowLow"], out[p + "ErrLowHigh"], out[p + "ErrHighHigh"] = pct(e[0][0]), pct(e[0][2]), pct(e[2][2])
-        x = r["excluding_multi_mass"][a["reference"]]
-        out[p + "NoMultiAuc"], out[p + "NoMultiFone"], out[p + "NoMultiAurc"] = num(x["auc"]), num(x["f1"]), num(x["aurc"])
-    out[tag + "Cases"], out[tag + "Patients"], out[tag + "B"] = str(r["n_cases"]), str(r["n_patients"]), f"{r['B']:,}".replace(",", "{,}")
+        # The sensitivity analysis exists only when p2_analysis.py ran with --multi_mass (cross-validation).
+        if "excluding_multi_mass" in r:
+            x = r["excluding_multi_mass"][a["reference"]]
+            out[p + "NoMultiAuc"], out[p + "NoMultiFone"], out[p + "NoMultiAurc"] = num(x["auc"]), num(x["f1"]), num(x["aurc"])
+    out[tag + "Cases"], out[tag + "Patients"], out[tag + "B"] = (f"{r[k]:,}".replace(",", "{,}") for k in ("n_cases", "n_patients", "B"))
     return out
 
 
