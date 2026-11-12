@@ -10,7 +10,7 @@ from pathlib import Path
 
 from make_tables import ARM_ROWS
 
-W, H, PITCH = 3.2, 2.9, 4.55          # plot width, plot height and distance between panels, in cm
+W, H, PITCH = 3.2, 2.6, 4.55          # plot width, plot height and distance between panels, in cm
 COLORS = {"densenet121": "armdn", "convnext_tiny": "armcx"}
 MIN_COUNT = 10                         # reliability bins with fewer predictions are not drawn
 

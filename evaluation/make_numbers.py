@@ -211,6 +211,22 @@ def reliability_macros(r, tag):
     return out
 
 
+ATTRIBUTES = {"subtlety_differs": "Subtlety", "assessment_differs": "Assessment", "shape_differs": "Shape", "margins_differs": "Margins"}
+
+
+def attribute_macros(r, tag):
+    """Exploratory annotation tests by attribute, from anchor_attributes_p2.py: AUC with its Holm-adjusted p value, and group sizes."""
+    out = {}
+    for method, prefix in REFERENCE.items():
+        if method not in r:
+            continue
+        for key, name in ATTRIBUTES.items():
+            v = r[method]["tests"][key]
+            out[tag + prefix + "Attr" + name + "Cell"] = f"{num(v['auc'], 2)} ({'$<$0.001' if v['p_holm'] < 0.001 else format(v['p_holm'], '.3f')})"
+            out[tag + "Attr" + name + "N"] = str(v["n_flagged"])
+    return out
+
+
 def seed_macros(r, tag):
     """Range over seeds of the reference models, from seed_table_p2.py."""
     out = {}
@@ -262,6 +278,7 @@ def main():
     ap.add_argument("--saliency", default="", help="gradcam_p2.py summary")
     ap.add_argument("--reliability", default="", help="reliability_p2.py output")
     ap.add_argument("--seeds", default="", help="seed_table_p2.py output")
+    ap.add_argument("--attributes", default="", help="anchor_attributes_p2.py output")
     ap.add_argument("--reference_effect", default="", help="p2_analysis.py output of the cohort whose view-term effect the sensitivity macros use")
     ap.add_argument("--scale_view", default="", help="view_term_p2.py output for the ConvNeXt-T model at evidence scale 1")
     ap.add_argument("--out", required=True)
@@ -280,6 +297,8 @@ def main():
         m.update(reliability_macros(json.load(open(args.reliability)), args.tag))
     if args.seeds:
         m.update(seed_macros(json.load(open(args.seeds)), args.tag))
+    if args.attributes:
+        m.update(attribute_macros(json.load(open(args.attributes)), args.tag))
     if args.reference_effect:
         m.update(sensitivity_macros(json.load(open(args.analysis)), json.load(open(args.reference_effect)), args.tag))
     if args.scale_view:

@@ -1,0 +1,100 @@
+{
+ "cued_net": {
+  "n": 528,
+  "tests": {
+   "subtlety_differs": {
+    "n_flagged": 97,
+    "n_other": 431,
+    "mean_flagged": 0.027398072034218388,
+    "mean_other": 0.026942178831363937,
+    "error_flagged": 0.222680412371134,
+    "error_other": 0.22041763341067286,
+    "auc": 0.5058243834764513,
+    "p": 0.8646,
+    "p_holm": 1.0
+   },
+   "assessment_differs": {
+    "n_flagged": 22,
+    "n_other": 506,
+    "mean_flagged": 0.03264504381345998,
+    "mean_other": 0.026781622726760712,
+    "error_flagged": 0.1272727272727273,
+    "error_other": 0.22490118577075102,
+    "auc": 0.5695292849443047,
+    "p": 0.2785,
+    "p_holm": 1.0
+   },
+   "shape_differs": {
+    "n_flagged": 92,
+    "n_other": 436,
+    "mean_flagged": 0.025226915287434707,
+    "mean_other": 0.027405540956864788,
+    "error_flagged": 0.19347826086956518,
+    "error_other": 0.22660550458715595,
+    "auc": 0.48062923813322694,
+    "p": 0.5652,
+    "p_holm": 1.0
+   },
+   "margins_differs": {
+    "n_flagged": 85,
+    "n_other": 443,
+    "mean_flagged": 0.029791164874766688,
+    "mean_other": 0.026495356770387973,
+    "error_flagged": 0.21882352941176464,
+    "error_other": 0.22121896162528218,
+    "auc": 0.5272606559553844,
+    "p": 0.4273,
+    "p_holm": 1.0
+   }
+  }
+ },
+ "cued_convnext_k5": {
+  "n": 528,
+  "tests": {
+   "subtlety_differs": {
+    "n_flagged": 97,
+    "n_other": 431,
+    "mean_flagged": 0.07347073864328352,
+    "mean_other": 0.08069833794772918,
+    "error_flagged": 0.2268041237113402,
+    "error_other": 0.18097447795823665,
+    "auc": 0.5103690769488363,
+    "p": 0.7543,
+    "p_holm": 1.0
+   },
+   "assessment_differs": {
+    "n_flagged": 22,
+    "n_other": 506,
+    "mean_flagged": 0.10879647332263755,
+    "mean_other": 0.07809115195804693,
+    "error_flagged": 0.21818181818181817,
+    "error_other": 0.18814229249011855,
+    "auc": 0.5873158462091268,
+    "p": 0.1668,
+    "p_holm": 0.5004
+   },
+   "shape_differs": {
+    "n_flagged": 92,
+    "n_other": 436,
+    "mean_flagged": 0.08930090743545098,
+    "mean_other": 0.0772751417885511,
+    "error_flagged": 0.21086956521739128,
+    "error_other": 0.1848623853211009,
+    "auc": 0.5102712405265257,
+    "p": 0.7556,
+    "p_holm": 1.0
+   },
+   "margins_differs": {
+    "n_flagged": 85,
+    "n_other": 443,
+    "mean_flagged": 0.11167214208166437,
+    "mean_other": 0.07317271608787426,
+    "error_flagged": 0.18823529411764706,
+    "error_other": 0.18961625282167044,
+    "auc": 0.5937060151374319,
+    "p": 0.006,
+    "p_holm": 0.024
+   }
+  }
+ }
+}
