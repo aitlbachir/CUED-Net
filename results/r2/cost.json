@@ -1,0 +1,116 @@
+{
+ "cued_net": {
+  "params_m": 14.466948,
+  "flops": 11333665280,
+  "latency": {
+   "mean_ms": 35.796993255615234,
+   "std_ms": 2.184791088104248,
+   "median_ms": 35.32358169555664
+  }
+ },
+ "tmc": {
+  "params_m": 14.466948,
+  "flops": 11333665288,
+  "latency": {
+   "mean_ms": 35.78251647949219,
+   "std_ms": 2.545569658279419,
+   "median_ms": 35.242225646972656
+  }
+ },
+ "softmax_dual": {
+  "params_m": 14.466948,
+  "flops": 11333665280,
+  "latency": {
+   "mean_ms": 36.31248474121094,
+   "std_ms": 2.6756880283355713,
+   "median_ms": 35.86685562133789
+  }
+ },
+ "cross_view": {
+  "params_m": 16.598148,
+  "flops": 11545152000,
+  "latency": {
+   "mean_ms": 36.99418640136719,
+   "std_ms": 2.4131627082824707,
+   "median_ms": 36.5180778503418
+  }
+ },
+ "cued_convnext": {
+  "params_m": 56.065348,
+  "flops": 17819905536,
+  "latency": {
+   "mean_ms": 14.004281997680664,
+   "std_ms": 0.857389509677887,
+   "median_ms": 13.836146354675293
+  }
+ },
+ "tmc_convnext": {
+  "params_m": 56.065348,
+  "flops": 17819905544,
+  "latency": {
+   "mean_ms": 13.729826927185059,
+   "std_ms": 0.8871375918388367,
+   "median_ms": 13.408447265625
+  }
+ },
+ "softmax_convnext": {
+  "params_m": 56.065348,
+  "flops": 17819905536,
+  "latency": {
+   "mean_ms": 13.084567070007324,
+   "std_ms": 0.6852740049362183,
+   "median_ms": 12.91258716583252
+  }
+ },
+ "cross_view_convnext": {
+  "params_m": 58.06522,
+  "flops": 18018285056,
+  "latency": {
+   "mean_ms": 15.197334289550781,
+   "std_ms": 1.4069677591323853,
+   "median_ms": 14.998921394348145
+  }
+ },
+ "sv_edl": {
+  "params_m": 7.233474,
+  "flops": null,
+  "latency": {
+   "mean_ms": 17.517427444458008,
+   "std_ms": 0.8500093817710876,
+   "median_ms": 17.431196212768555
+  }
+ },
+ "mc_dropout": {
+  "passes": 50,
+  "latency": {
+   "mean_ms": 1727.6077880859375,
+   "std_ms": 34.786834716796875,
+   "median_ms": 1730.4144287109375
+  }
+ },
+ "deep_ensemble": {
+  "members": 5,
+  "latency": {
+   "mean_ms": 171.3487548828125,
+   "std_ms": 9.627935409545898,
+   "median_ms": 168.87246704101562
+  }
+ },
+ "mc_dropout_convnext": {
+  "passes": 50,
+  "latency": {
+   "mean_ms": 660.5039672851562,
+   "std_ms": 33.64948272705078,
+   "median_ms": 662.2703857421875
+  }
+ },
+ "deep_ensemble_convnext": {
+  "members": 5,
+  "latency": {
+   "mean_ms": 69.28993225097656,
+   "std_ms": 4.141420841217041,
+   "median_ms": 68.84647369384766
+  }
+ },
+ "gpu": "Tesla T4"
+}

@@ -1,0 +1,54 @@
+{
+ "clear_correct": {
+  "key": "P_01190_LEFT_1",
+  "n_in_stratum": 79,
+  "label": 1,
+  "p": 0.7759,
+  "p_cc": 0.7698,
+  "p_mlo": 0.7768,
+  "u_amb": 0.6396,
+  "u_ev": 0.1194,
+  "u_vd": 0.0044,
+  "u_total": 0.7634,
+  "error": 0.0
+ },
+ "within_view_uncertain": {
+  "key": "P_01350_RIGHT_1",
+  "n_in_stratum": 47,
+  "label": 1,
+  "p": 0.5661,
+  "p_cc": 0.5688,
+  "p_mlo": 0.5636,
+  "u_amb": 0.8019,
+  "u_ev": 0.1668,
+  "u_vd": 0.0019,
+  "u_total": 0.9706,
+  "error": 0.2
+ },
+ "view_discordant_correct": {
+  "key": "P_00818_RIGHT_1",
+  "n_in_stratum": 38,
+  "label": 1,
+  "p": 0.705,
+  "p_cc": 0.7789,
+  "p_mlo": 0.608,
+  "u_amb": 0.7079,
+  "u_ev": 0.1379,
+  "u_vd": 0.0261,
+  "u_total": 0.8719,
+  "error": 0.0
+ },
+ "view_discordant_error": {
+  "key": "P_00294_LEFT_1",
+  "n_in_stratum": 8,
+  "label": 0,
+  "p": 0.5623,
+  "p_cc": 0.2902,
+  "p_mlo": 0.7957,
+  "u_amb": 0.6642,
+  "u_ev": 0.1252,
+  "u_vd": 0.1986,
+  "u_total": 0.988,
+  "error": 1.0
+ }
+}

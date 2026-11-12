@@ -1,0 +1,138 @@
+{
+ "cued_net": {
+  "n": 154,
+  "unmatched": 0,
+  "tests": {
+   "described_differently": {
+    "n_flagged": 52,
+    "n_other": 102,
+    "mean_flagged": 0.03251433469343324,
+    "mean_other": 0.021176220983457304,
+    "error_flagged": 0.27692307692307694,
+    "error_other": 0.2588235294117647,
+    "auc": 0.5961538461538461,
+    "p": 0.0614,
+    "p_holm": 0.1228
+   },
+   "subtlety_gap": {
+    "n": 154,
+    "rho": 0.19348859052506906,
+    "p": 0.0211,
+    "p_holm": 0.0633
+   },
+   "entropy_with_subtlety": {
+    "n": 154,
+    "rho": -0.21335772739079295,
+    "p": 0.0101,
+    "p_holm": 0.0404
+   },
+   "evidential_share_with_subtlety": {
+    "n": 154,
+    "rho": -0.15327977686527489,
+    "p": 0.0621,
+    "p_holm": 0.1228
+   }
+  },
+  "subtlety_gap_levels": {
+   "0": {
+    "n": 123,
+    "u_vd": 0.02217170341212597,
+    "error": 0.25853658536585367
+   },
+   "1": {
+    "n": 25,
+    "u_vd": 0.034047650095509835,
+    "error": 0.28
+   },
+   "2": {
+    "n": 6,
+    "u_vd": 0.04540152871532225,
+    "error": 0.3333333333333333
+   }
+  },
+  "assessment_differs": {
+   "n_flagged": 10,
+   "n_other": 144,
+   "mean_flagged": 0.03360853699387209,
+   "mean_other": 0.024407184544669804,
+   "error_flagged": 0.12,
+   "error_other": 0.27499999999999997,
+   "auc": 0.5027777777777778,
+   "p": 0.9794
+  },
+  "exploratory_clearer_view_evidence": {
+   "n": 31,
+   "difference": 0.03224933548387103,
+   "share_positive": 0.5161290322580645,
+   "p": 0.8331
+  }
+ },
+ "cued_convnext_k5": {
+  "n": 154,
+  "unmatched": 0,
+  "tests": {
+   "described_differently": {
+    "n_flagged": 52,
+    "n_other": 102,
+    "mean_flagged": 0.07858096358240486,
+    "mean_other": 0.09309865809149866,
+    "error_flagged": 0.22307692307692312,
+    "error_other": 0.22352941176470592,
+    "auc": 0.46568627450980393,
+    "p": 0.4921,
+    "p_holm": 0.9842
+   },
+   "subtlety_gap": {
+    "n": 154,
+    "rho": 0.03553295056938624,
+    "p": 0.6482,
+    "p_holm": 0.9842
+   },
+   "entropy_with_subtlety": {
+    "n": 154,
+    "rho": -0.26197650649742427,
+    "p": 0.0019,
+    "p_holm": 0.0076
+   },
+   "evidential_share_with_subtlety": {
+    "n": 154,
+    "rho": -0.22724783776501128,
+    "p": 0.0049,
+    "p_holm": 0.0147
+   }
+  },
+  "subtlety_gap_levels": {
+   "0": {
+    "n": 123,
+    "u_vd": 0.0871936601337481,
+    "error": 0.21138211382113822
+   },
+   "1": {
+    "n": 25,
+    "u_vd": 0.09025956906221913,
+    "error": 0.23199999999999998
+   },
+   "2": {
+    "n": 6,
+    "u_vd": 0.10016063476856979,
+    "error": 0.43333333333333335
+   }
+  },
+  "assessment_differs": {
+   "n_flagged": 10,
+   "n_other": 144,
+   "mean_flagged": 0.07707264749824967,
+   "mean_other": 0.08896907469885706,
+   "error_flagged": 0.04,
+   "error_other": 0.2361111111111111,
+   "auc": 0.40069444444444446,
+   "p": 0.3053
+  },
+  "exploratory_clearer_view_evidence": {
+   "n": 31,
+   "difference": 0.25458514838709656,
+   "share_positive": 0.5483870967741935,
+   "p": 0.631
+  }
+ }
+}

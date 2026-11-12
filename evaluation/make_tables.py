@@ -28,12 +28,16 @@ def p_text(p):
 
 PLACEMENT = "!t"
 FORCE_WIDE = False
+SIZE = "footnotesize"
+COLSEP = ""
+REFERENCE_ONLY = False
 
 
 def table(columns, rows, caption, label, wide=True):
     env = "table*" if wide or FORCE_WIDE else "table"
     head = " & ".join(columns) + r" \\"
-    return "\n".join([rf"\begin{{{env}}}[{PLACEMENT}]", r"\centering", rf"\caption{{{caption}}}", rf"\label{{{label}}}", r"\footnotesize",
+    size = [rf"\{SIZE}"] + ([rf"\setlength{{\tabcolsep}}{{{COLSEP}}}"] if COLSEP else [])
+    return "\n".join([rf"\begin{{{env}}}[{PLACEMENT}]", r"\centering", rf"\caption{{{caption}}}", rf"\label{{{label}}}", *size,
                       rf"\begin{{tabular}}{{l{'c' * (len(columns) - 1)}}}", r"\toprule", head, r"\midrule", *rows, r"\bottomrule", r"\end{tabular}", rf"\end{{{env}}}"])
 
 
@@ -149,6 +153,88 @@ def cmmd_view(zero_shot, adapted, what, suffix=""):
                  "tab:viewterm_cmmd" + suffix)
 
 
+def method_blocks(blocks, n_columns):
+    """Rows of every locked method, one group per cohort and backbone. blocks: list of (analysis, cohort name)."""
+    for r, cohort in blocks:
+        for arm, spec in ARM_ROWS.items():
+            if not any(key in r["summary"] for key, _ in spec):
+                continue
+            if REFERENCE_ONLY:
+                # One row per cohort and backbone, for CUED-Net alone; the analysis file holds the comparators.
+                yield r, f"{cohort}, {ARM_NAMES[arm]}", spec[0][0]
+                continue
+            yield None, rf"\multicolumn{{{n_columns}}}{{l}}{{\textit{{{cohort}, {ARM_NAMES[arm]}}}}} \\", None
+            for key, name in spec:
+                if key in r["summary"]:
+                    yield r, name, key
+
+
+def first_column():
+    return "Cohort and backbone" if REFERENCE_ONLY else "Method"
+
+
+def of_cued():
+    return " of CUED-Net" if REFERENCE_ONLY else ""
+
+
+def elsewhere():
+    return " The analysis files hold the same measures for every comparator." if REFERENCE_ONLY else ""
+
+
+def operating(blocks, suffix=""):
+    """Two columns wide: operating points the main tables do not hold, at the fixed and at the inner-validation thresholds."""
+    rows = []
+    for r, name, key in method_blocks(blocks, 7):
+        if r is None:
+            rows.append(name)
+            continue
+        s = r["summary"][key]
+        rows.append(f"{name} & {ci(s['ppv'])} & {ci(s['npv'])} & {ci(s['fnr'])} & {ci(s['sens_at_90spec'])} & "
+                    f"{s['spec_at_90spec']['value']:.3f} & {ci(s['f1_inner_threshold'])} " + r"\\")
+    return table([first_column(), "PPV", "NPV", "FNR", "Sens. at 90\\% spec.", "Spec. reached", "F1, inner threshold"], rows,
+                 "Operating points" + of_cued() + ". PPV, NPV and the false-negative rate (FNR) use the threshold of 0.5 and hold at the prevalence of each cohort. "
+                 "The next two columns use the threshold that gave 90\\% specificity on the inner validation data, and give the sensitivity and the specificity "
+                 "it reached on the evaluated cases. The last column gives F1 at the threshold that maximized F1 on the inner validation data. "
+                 "Brackets give 95\\% patient-clustered bootstrap intervals." + elsewhere(), "tab:operating" + suffix)
+
+
+def calibration(blocks, suffix=""):
+    """Two columns wide: Brier score, NLL, equal-mass ECE and MCE before and after temperature scaling."""
+    rows = []
+    for r, name, key in method_blocks(blocks, 10):
+        if r is None:
+            rows.append(name)
+            continue
+        s, v = r["summary"][key], lambda k: f"{r['summary'][key][k]['value']:.3f}"
+        rows.append(f"{name} & {r['temperature'][key]['mean']:.2f} & {v('brier')} & {ci(s['brier_cal'])} & {v('nll')} & {ci(s['nll_cal'])} & "
+                    f"{v('ece_mass')} & {v('ece_mass_cal')} & {v('mce')} & {v('mce_cal')} " + r"\\")
+    return table([first_column(), "$T$", "Brier", "Brier, scaled", "NLL", "NLL, scaled", "ECE$_m$", "ECE$_m$, scaled", "MCE", "MCE, scaled"], rows,
+                 "Calibration measures" + of_cued() + " other than the ECE of the main tables, before and after temperature scaling. $T$ is the mean temperature fitted on the "
+                 "inner validation data. NLL is the negative log-likelihood, ECE$_m$ the expected calibration error with 15 equal-mass bins, "
+                 "and MCE the maximum calibration error over 15 equal-width bins. Brackets give 95\\% patient-clustered bootstrap intervals." + elsewhere(),
+                 "tab:calibration_measures" + suffix)
+
+
+TERM_PAIRS = [("u_amb_vs_u_ev", "$U^{\\mathrm{amb}}$, $U^{\\mathrm{evid}}$"), ("u_amb_vs_u_vd", "$U^{\\mathrm{amb}}$, $U^{\\mathrm{vd}}$"),
+              ("u_ev_vs_u_vd", "$U^{\\mathrm{evid}}$, $U^{\\mathrm{vd}}$")]
+
+
+def dependence(blocks, suffix=""):
+    """One column wide: dependence between the three terms of the reference model, with patient-level permutation p values."""
+    rows = []
+    for r, cohort in blocks:
+        for arm, a in r["arms"].items():
+            rows.append(rf"\multicolumn{{4}}{{l}}{{\textit{{{cohort}, {ARM_NAMES[arm]}}}}} \\")
+            for key, name in TERM_PAIRS:
+                d = a["term_dependence"][key]
+                rows.append(name + " & " + " & ".join(f"{d[k]['value']:.2f} ({d[k]['p']:.3f})" for k in
+                                                       ("spearman", "distance_correlation", "mutual_information")) + r" \\")
+    return table(["Pair of terms", "Spearman $\\rho$", "Distance correlation", "Mutual information"], rows,
+                 "Dependence between the three terms of CUED-Net, from per-case values averaged over seeds. Mutual information is the "
+                 "$k$-nearest-neighbor estimate in nats. Parentheses give $p$ values from 999 permutations of patients, so the smallest value that can occur is 0.001.",
+                 "tab:dependence" + suffix, wide=False)
+
+
 E10_ROWS = [("cued_net", "Reference model"), ("cued_resnet50", "ResNet-50"), ("cued_effnet_b0", "EfficientNet-B0"),
             ("cued_no_consistency", "No consistency term"), ("cued_vdl", "View discordance loss")]
 
@@ -169,19 +255,27 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--analysis", required=True)
     ap.add_argument("--what", default="five-fold cross-validation")
-    ap.add_argument("--layout", default="full", choices=["full", "compact", "cmmd", "cmmd_view", "transfer", "e10"],
+    ap.add_argument("--layout", default="full", choices=["full", "compact", "cmmd", "cmmd_view", "transfer", "e10", "operating", "calibration", "dependence"],
                     help="full: the three main tables. compact: one table with AUC and AURC. cmmd: zero-shot and adapted rows. "
-                         "cmmd_view: view-term tests, zero-shot and adapted. transfer: every method with accuracy, temperature and ECE. e10: robustness arms")
+                         "cmmd_view: view-term tests, zero-shot and adapted. transfer: every method with accuracy, temperature and ECE. e10: robustness arms. "
+                         "operating, calibration, dependence: Supplement tables of one or two cohorts (--second)")
+    ap.add_argument("--second", default="", help="analysis of a second cohort, shown below the first in --layout operating, calibration and dependence")
+    ap.add_argument("--second_what", default="Held-out split", help="name of the second cohort in the group headings")
+    ap.add_argument("--reference_only", action="store_true", help="--layout operating and calibration: one row per cohort and backbone, for CUED-Net alone")
+    ap.add_argument("--size", default="footnotesize", help="LaTeX font size command of every table, without the backslash")
+    ap.add_argument("--colsep", default="", help="column separation of every table, for example 3pt")
     ap.add_argument("--adapted", default="", help="adapted CMMD analysis, for --layout cmmd and cmmd_view, with --analysis as the zero-shot one")
     ap.add_argument("--suffix", default="", help="appended to every table label, so that two analyses can share a document")
     ap.add_argument("--no_view_term", action="store_true", help="leave the view-term table out of --layout full, when the text gives its rows")
+    ap.add_argument("--only", default="", choices=["", "classification", "referral", "view_term"], help="write one table of --layout full")
     ap.add_argument("--placement", default="!t", help="float placement of every table, for example !htbp in the Supplement")
     ap.add_argument("--wide", action="store_true", help="set every table across both columns, so that a run of floats keeps its order")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
-    global PLACEMENT, FORCE_WIDE
-    PLACEMENT, FORCE_WIDE = args.placement, args.wide
+    global PLACEMENT, FORCE_WIDE, SIZE, COLSEP, REFERENCE_ONLY
+    PLACEMENT, FORCE_WIDE, SIZE, COLSEP, REFERENCE_ONLY = args.placement, args.wide, args.size, args.colsep, args.reference_only
     r = json.load(open(args.analysis))
+    blocks = [(r, args.what)] + ([(json.load(open(args.second)), args.second_what)] if args.second else [])
     if args.layout == "compact":
         tables = [compact(r, args.what, args.suffix)]
     elif args.layout == "cmmd":
@@ -192,10 +286,14 @@ def main():
         tables = [transfer(r, args.what, args.suffix)]
     elif args.layout == "e10":
         tables = [e10(r, args.suffix)]
+    elif args.layout in ("operating", "calibration", "dependence"):
+        tables = [dict(operating=operating, calibration=calibration, dependence=dependence)[args.layout](blocks, args.suffix)]
     else:
         tables = [classification(r, args.what, args.suffix), referral(r, args.what, args.suffix)]
         if not args.no_view_term:
             tables.append(view_term(r, args.what, args.suffix))
+        if args.only:
+            tables = [dict(classification=classification, referral=referral, view_term=view_term)[args.only](r, args.what, args.suffix)]
     Path(args.out).write_text("\n\n".join(tables) + "\n")
 
 

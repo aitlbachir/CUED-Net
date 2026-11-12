@@ -13,7 +13,18 @@ from pathlib import Path
 ARMS = {"densenet121": "DN", "convnext_tiny": "CX"}
 SHORT = {"tmc": "Tmc", "deep_ensemble": "De", "mc_dropout": "Mc", "cross_view": "Cv", "sv_edl": "Sv",
          "tmc_entropy": "TmcH", "sv_edl_entropy": "SvH"}
-METRICS = {"auc": "Auc", "f1": "Fone", "aurc": "Aurc", "eaurc": "Eaurc"}
+METRICS = {"auc": "Auc", "f1": "Fone", "aurc": "Aurc", "eaurc": "Eaurc",
+           "f1_inner_threshold": "FoneInner", "sens_at_90spec": "SensAtSpec", "brier_cal": "BrierCal", "nll_cal": "NllCal"}
+# Operating points and calibration of the reference model, beyond those of the main tables.
+EXTRA = {"ppv": "Ppv", "npv": "Npv", "fnr": "Fnr", "sens_at_90spec": "SensAtSpec", "spec_at_90spec": "SpecAtSpec",
+         "f1_inner_threshold": "FoneInner", "brier": "Brier", "brier_cal": "BrierCal", "nll": "Nll", "nll_cal": "NllCal",
+         "ece_mass": "EceMass", "ece_mass_cal": "EceMassCal", "mce": "Mce", "mce_cal": "MceCal"}
+DEPENDENCE = {"spearman": "Rho", "distance_correlation": "Dcor", "mutual_information": "Mi"}
+NET_BENEFIT = {0.10: "Ten", 0.30: "Thirty", 0.50: "Fifty"}
+# The arm trained with the regulariser of the first revision, all else as the DenseNet-121 reference model.
+EARLIER_LOSS = "cued_r1_kl"
+# CUED-Net with ConvNeXt-T encoders at evidence scale 1, the setting that the selection rule did not keep.
+SCALE_ONE = "cued_convnext"
 
 
 def num(x, d=3, sign=False):
@@ -50,6 +61,8 @@ def macros(r, tag):
         for key, name in (("auc", "Auc"), ("f1", "Fone"), ("sensitivity", "Sens"), ("specificity", "Spec"), ("ap", "Ap"),
                           ("ece", "Ece"), ("ece_cal", "EceCal"), ("aurc", "Aurc"), ("eaurc", "Eaurc"), ("error_auroc", "ErrAuroc")):
             out[p + name] = ci(s[key])
+        for key, name in EXTRA.items():
+            out[p + name] = ci(s[key])
         out[p + "AucPt"] = num(s["auc"]["value"])
         out[p + "Acc"] = num(s["accuracy"]["value"])
         # Extremes over the comparator scores of this arm, for statements that concern every method.
@@ -77,8 +90,9 @@ def macros(r, tag):
         out[p + "Fitted"] = f"{ci(f['delta_aurc'], sign=True)}, {pval(f['delta_aurc']['p'])}"
         out[p + "FittedAurc"] = num(f["point"]["aurc_m1"])
         dep = a["term_dependence"]
-        for key, name in (("u_amb_vs_u_ev", "RhoAmbEv"), ("u_amb_vs_u_vd", "RhoAmbVd"), ("u_ev_vs_u_vd", "RhoEvVd")):
-            out[p + name] = num(dep[key]["spearman"]["value"], 2)
+        for key, name in (("u_amb_vs_u_ev", "AmbEv"), ("u_amb_vs_u_vd", "AmbVd"), ("u_ev_vs_u_vd", "EvVd")):
+            for stat, sname in DEPENDENCE.items():
+                out[p + sname + name] = num(dep[key][stat]["value"], 2)
         for key, name in (("u_amb", "MeanAmb"), ("u_ev", "MeanEv"), ("u_vd", "MeanVd")):
             out[p + name] = num(a["term_means"][key])
         fus = a["fusion_ablation"]
@@ -93,10 +107,23 @@ def macros(r, tag):
         out[p + "ConflictShare"], out[p + "ConflictErr"], out[p + "AgreeErr"] = pct(vc["share"]), pct(vc["error_conflict"]), pct(vc["error_agreement"])
         e = a["error_by_tercile"]
         out[p + "ErrLowLow"], out[p + "ErrLowHigh"], out[p + "ErrHighHigh"] = pct(e[0][0]), pct(e[0][2]), pct(e[2][2])
+        # Net benefit of the reference model on its calibrated, seed-averaged probabilities, against acting on every case.
+        curve = {round(row["threshold"], 2): row for row in r.get("decision_curve", {}).get(a["reference"], [])}
+        for t, word in NET_BENEFIT.items():
+            if t in curve:
+                out[p + "Nb" + word], out[p + "NbAll" + word] = num(curve[t]["net_benefit"]), num(curve[t]["treat_all"])
         # The sensitivity analysis exists only when p2_analysis.py ran with --multi_mass (cross-validation).
         if "excluding_multi_mass" in r:
             x = r["excluding_multi_mass"][a["reference"]]
             out[p + "NoMultiAuc"], out[p + "NoMultiFone"], out[p + "NoMultiAurc"] = num(x["auc"]), num(x["f1"]), num(x["aurc"])
+    if SCALE_ONE in r["summary"]:
+        s = r["summary"][SCALE_ONE]
+        for key, name in (("auc", "Auc"), ("f1", "Fone"), ("aurc", "Aurc"), ("nll", "Nll"), ("ece_cal", "EceCal")):
+            out[tag + "CXScaleOne" + name] = ci(s[key])
+    if EARLIER_LOSS in r["summary"]:
+        s = r["summary"][EARLIER_LOSS]
+        for key, name in (("auc", "Auc"), ("f1", "Fone"), ("aurc", "Aurc"), ("ece_cal", "EceCal")):
+            out[tag + "EarlierLoss" + name] = ci(s[key])
     out[tag + "Cases"], out[tag + "Patients"], out[tag + "B"] = (f"{r[k]:,}".replace(",", "{,}") for k in ("n_cases", "n_patients", "B"))
     return out
 
@@ -117,6 +144,11 @@ def anchor_macros(r, tag):
         d = t["described_differently"]
         out[p + "Flagged"] = str(d["n_flagged"])
         out[p + "Diff"] = f"{num(d['auc'], 2)}, {pval(d['p_holm'], holm=True)}"
+        # Short cells for narrow tables: statistic with the Holm-adjusted p value in parentheses.
+        cell = lambda v, ph: f"{num(v, 2)} ({'$<$0.001' if ph < 0.001 else f'{ph:.3f}'})"
+        out[p + "DiffCell"] = cell(d["auc"], d["p_holm"])
+        for key, name in (("subtlety_gap", "Gap"), ("entropy_with_subtlety", "Entropy"), ("evidential_share_with_subtlety", "Share")):
+            out[p + name + "Cell"] = cell(t[key]["rho"], t[key]["p_holm"])
         for key, name in (("subtlety_gap", "Gap"), ("entropy_with_subtlety", "Entropy"), ("evidential_share_with_subtlety", "Share")):
             out[p + name] = f"{num(t[key]['rho'], 2)}, {pval(t[key]['p_holm'], holm=True)}"
     return out
@@ -168,6 +200,38 @@ def saliency_macros(r, tag):
     return out
 
 
+def reliability_macros(r, tag):
+    """Mean confidence of the predicted class before and after temperature scaling, and accuracy, from reliability_p2.py."""
+    out = {}
+    for method, prefix in REFERENCE.items():
+        if method in r["methods"]:
+            m, p = r["methods"][method], tag + prefix + "Rel"
+            out[p + "Conf"], out[p + "ConfCal"], out[p + "Acc"] = num(m["raw"]["mean_confidence"]), num(m["calibrated"]["mean_confidence"]), num(m["raw"]["accuracy"])
+    return out
+
+
+def seed_macros(r, tag):
+    """Range over seeds of the reference models, from seed_table_p2.py."""
+    out = {}
+    for method, prefix in REFERENCE.items():
+        if method in r:
+            for metric, name in (("auc", "Auc"), ("f1", "Fone"), ("aurc", "Aurc")):
+                out[tag + prefix + "Seed" + name + "Min"], out[tag + prefix + "Seed" + name + "Max"] = num(min(r[method][metric])), num(max(r[method][metric]))
+            w = r[method]["weight_cc"]
+            out[tag + prefix + "WeightLow"], out[tag + prefix + "WeightHigh"] = num(w["p01"], 2), num(w["p99"], 2)
+    return out
+
+
+def scale_view_macros(r, tag):
+    """View-term tests of the ConvNeXt-T model at evidence scale 1, from view_term_p2.py."""
+    assert r["method"] == SCALE_ONE
+    out = {}
+    for key, name in (("total_vs_within", "ViewWithin"), ("amb_plus_view_vs_amb", "ViewAmb"), ("evidential_plus_view_vs_evidential", "ViewEvid")):
+        v = r["view_term"][key]["aurc"]
+        out[tag + "CXScaleOne" + name] = f"{ci(v, sign=True)}, {pval(v['p'])}"
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--analysis", required=True)
@@ -176,6 +240,9 @@ def main():
     ap.add_argument("--response", default="", help="term_response_p2.py --summary output")
     ap.add_argument("--cost", default="", help="cost_p2.py output")
     ap.add_argument("--saliency", default="", help="gradcam_p2.py summary")
+    ap.add_argument("--reliability", default="", help="reliability_p2.py output")
+    ap.add_argument("--seeds", default="", help="seed_table_p2.py output")
+    ap.add_argument("--scale_view", default="", help="view_term_p2.py output for the ConvNeXt-T model at evidence scale 1")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     assert args.tag.isalpha() or not args.tag
@@ -188,6 +255,12 @@ def main():
         m.update(cost_macros(json.load(open(args.cost)), args.tag))
     if args.saliency:
         m.update(saliency_macros(json.load(open(args.saliency)), args.tag))
+    if args.reliability:
+        m.update(reliability_macros(json.load(open(args.reliability)), args.tag))
+    if args.seeds:
+        m.update(seed_macros(json.load(open(args.seeds)), args.tag))
+    if args.scale_view:
+        m.update(scale_view_macros(json.load(open(args.scale_view)), args.tag))
     lines = [f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in sorted(m.items())]
     Path(args.out).write_text("% Written by evaluation/make_numbers.py. Do not edit by hand.\n" + "\n".join(lines) + "\n")
     print(len(lines), "macros")
