@@ -8,6 +8,7 @@ its analysis holds, so the adapted CMMD summaries (CUED-Net and TMC) need no sep
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 ARMS = {"densenet121": "DN", "convnext_tiny": "CX"}
@@ -232,6 +233,25 @@ def scale_view_macros(r, tag):
     return out
 
 
+def sensitivity_macros(r, reference, tag):
+    """What a cohort could detect for the view-term test, against the effect found in a reference cohort.
+
+    The standard error comes from the width of the bootstrap interval under a normal approximation.
+    Mde is the reduction of AURC detectable with 80% power at a two-sided level of 0.05, and Power is
+    the power for a reduction of the size found in the reference cohort. A calculation made after the
+    evaluation, for the reader to judge a result that was not confirmed.
+    """
+    out, phi = {}, lambda z: 0.5 * (1 + math.erf(z / math.sqrt(2)))
+    for arm, prefix in ARMS.items():
+        v, ref = r["arms"][arm]["view_term"]["total_vs_within"]["aurc"], reference["arms"][arm]["view_term"]["total_vs_within"]["aurc"]
+        se = (v["ci95"][1] - v["ci95"][0]) / (2 * 1.959964)
+        z = abs(ref["value"]) / se
+        out[tag + prefix + "ViewMde"] = num((1.959964 + 0.841621) * se)
+        out[tag + prefix + "ViewPower"] = pct(phi(z - 1.959964) + phi(-z - 1.959964), 0)
+        out[tag + prefix + "ViewRefEffect"] = num(abs(ref["value"]))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--analysis", required=True)
@@ -242,6 +262,7 @@ def main():
     ap.add_argument("--saliency", default="", help="gradcam_p2.py summary")
     ap.add_argument("--reliability", default="", help="reliability_p2.py output")
     ap.add_argument("--seeds", default="", help="seed_table_p2.py output")
+    ap.add_argument("--reference_effect", default="", help="p2_analysis.py output of the cohort whose view-term effect the sensitivity macros use")
     ap.add_argument("--scale_view", default="", help="view_term_p2.py output for the ConvNeXt-T model at evidence scale 1")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
@@ -259,6 +280,8 @@ def main():
         m.update(reliability_macros(json.load(open(args.reliability)), args.tag))
     if args.seeds:
         m.update(seed_macros(json.load(open(args.seeds)), args.tag))
+    if args.reference_effect:
+        m.update(sensitivity_macros(json.load(open(args.analysis)), json.load(open(args.reference_effect)), args.tag))
     if args.scale_view:
         m.update(scale_view_macros(json.load(open(args.scale_view)), args.tag))
     lines = [f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in sorted(m.items())]
