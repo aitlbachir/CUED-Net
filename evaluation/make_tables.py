@@ -26,10 +26,14 @@ def p_text(p):
     return "$<$0.001" if p < 0.001 else f"{p:.3f}"
 
 
+PLACEMENT = "!t"
+FORCE_WIDE = False
+
+
 def table(columns, rows, caption, label, wide=True):
-    env = "table*" if wide else "table"
+    env = "table*" if wide or FORCE_WIDE else "table"
     head = " & ".join(columns) + r" \\"
-    return "\n".join([rf"\begin{{{env}}}[!t]", r"\centering", rf"\caption{{{caption}}}", rf"\label{{{label}}}", r"\footnotesize",
+    return "\n".join([rf"\begin{{{env}}}[{PLACEMENT}]", r"\centering", rf"\caption{{{caption}}}", rf"\label{{{label}}}", r"\footnotesize",
                       rf"\begin{{tabular}}{{l{'c' * (len(columns) - 1)}}}", r"\toprule", head, r"\midrule", *rows, r"\bottomrule", r"\end{tabular}", rf"\end{{{env}}}"])
 
 
@@ -62,13 +66,15 @@ def referral(r, what, suffix=""):
                  f"Referral, {what}. Lower AURC and E-AURC are better.", "tab:referral" + suffix)
 
 
+VIEW_ROWS = [("total_vs_within", "Added to both within-view terms"), ("amb_plus_view_vs_amb", "Added to $U^{\\mathrm{amb}}$ alone"),
+             ("evidential_plus_view_vs_evidential", "Added to $U^{\\mathrm{evid}}$ alone")]
+
+
 def view_term(r, what, suffix=""):
     rows = []
-    names = [("total_vs_within", "Added to both within-view terms"), ("amb_plus_view_vs_amb", "Added to $U^{\\mathrm{amb}}$ alone"),
-             ("evidential_plus_view_vs_evidential", "Added to $U^{\\mathrm{evid}}$ alone")]
     for arm, a in r["arms"].items():
         rows.append(rf"\multicolumn{{3}}{{l}}{{\textit{{{ARM_NAMES[arm]}}}}} \\")
-        for key, name in names:
+        for key, name in VIEW_ROWS:
             v = a["view_term"][key]["aurc"]
             rows.append(f"{name} & {sg(v['value'])} [{sg(v['ci95'][0])}, {sg(v['ci95'][1])}] & {p_text(v['p'])} " + r"\\")
         f = a["prespecified_fitted_score"]["added_value"]["delta_aurc"]
@@ -108,6 +114,41 @@ def cmmd(zero_shot, adapted, what, suffix=""):
                  "Brackets give 95\\% patient-clustered bootstrap intervals.", "tab:cmmd" + suffix, wide=False)
 
 
+def transfer(r, what, suffix=""):
+    """Two columns wide: every method on another cohort, with what shows whether the threshold and the temperature transfer."""
+    rows = []
+    for arm, spec in ARM_ROWS.items():
+        if not any(key in r["summary"] for key, _ in spec):
+            continue
+        rows.append(rf"\multicolumn{{8}}{{l}}{{\textit{{{ARM_NAMES[arm]}}}}} \\")
+        for key, name in spec:
+            if key in r["summary"]:
+                s, t = r["summary"][key], r["temperature"][key]["mean"]
+                rows.append(f"{name} & {ci(s['auc'])} & {ci(s['aurc'])} & {ci(s['error_auroc'])} & {s['accuracy']['value']:.3f} & {t:.2f} & "
+                            f"{s['ece']['value']:.3f} & {s['ece_cal']['value']:.3f} " + r"\\")
+    return table(["Method", "AUC", "AURC", "Error AUROC", "Accuracy", "$T$", "ECE", "Calibrated ECE"], rows,
+                 f"Results of every locked method, {what}. CUED-Net is ranked by $H(\\mathbf{{p}})$, TMC and single-view EDL by vacuity, "
+                 "the other methods by predictive entropy. Accuracy uses the threshold of 0.5. $T$ is the mean temperature fitted on the inner validation data, "
+                 "and ECE is given before and after scaling with it. Brackets give 95\\% patient-clustered bootstrap intervals.", "tab:transfer" + suffix)
+
+
+def cmmd_view(zero_shot, adapted, what, suffix=""):
+    """Two columns wide: the view-term tests on CMMD, zero-shot and adapted side by side."""
+    def cell(v):
+        return f"{sg(v['value'])} [{sg(v['ci95'][0])}, {sg(v['ci95'][1])}] & {p_text(v['p'])}"
+    rows = []
+    for arm in ARM_ROWS:
+        rows.append(rf"\multicolumn{{5}}{{l}}{{\textit{{{ARM_NAMES[arm]}}}}} \\")
+        for key, name in VIEW_ROWS:
+            rows.append(f"{name} & " + " & ".join(cell(r["arms"][arm]["view_term"][key]["aurc"]) for r in (zero_shot, adapted)) + r" \\")
+        rows.append("Fitted score, original plan & " + " & ".join(cell(r["arms"][arm]["prespecified_fitted_score"]["added_value"]["delta_aurc"])
+                                                                  for r in (zero_shot, adapted)) + r" \\")
+    return table(["Change in AURC", "Zero-shot [95\\% CI]", "$p$", "Adapted [95\\% CI]", "$p$"], rows,
+                 f"Referral value of view discordance on CMMD, {what}. The first three rows add $U^{{\\mathrm{{vd}}}}$ to the terms named. "
+                 "The last row adds $1-e^{-D_{\\mathrm{sym}}}$ to vacuity in the fitted score of the original plan. A negative difference favors the addition.",
+                 "tab:viewterm_cmmd" + suffix)
+
+
 E10_ROWS = [("cued_net", "Reference model"), ("cued_resnet50", "ResNet-50"), ("cued_effnet_b0", "EfficientNet-B0"),
             ("cued_no_consistency", "No consistency term"), ("cued_vdl", "View discordance loss")]
 
@@ -128,18 +169,27 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--analysis", required=True)
     ap.add_argument("--what", default="five-fold cross-validation")
-    ap.add_argument("--layout", default="full", choices=["full", "compact", "cmmd", "e10"],
-                    help="full: the three main tables. compact: one table with AUC and AURC. cmmd: zero-shot and adapted rows. e10: robustness arms")
-    ap.add_argument("--adapted", default="", help="adapted CMMD analysis, for --layout cmmd, with --analysis as the zero-shot one")
+    ap.add_argument("--layout", default="full", choices=["full", "compact", "cmmd", "cmmd_view", "transfer", "e10"],
+                    help="full: the three main tables. compact: one table with AUC and AURC. cmmd: zero-shot and adapted rows. "
+                         "cmmd_view: view-term tests, zero-shot and adapted. transfer: every method with accuracy, temperature and ECE. e10: robustness arms")
+    ap.add_argument("--adapted", default="", help="adapted CMMD analysis, for --layout cmmd and cmmd_view, with --analysis as the zero-shot one")
     ap.add_argument("--suffix", default="", help="appended to every table label, so that two analyses can share a document")
     ap.add_argument("--no_view_term", action="store_true", help="leave the view-term table out of --layout full, when the text gives its rows")
+    ap.add_argument("--placement", default="!t", help="float placement of every table, for example !htbp in the Supplement")
+    ap.add_argument("--wide", action="store_true", help="set every table across both columns, so that a run of floats keeps its order")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
+    global PLACEMENT, FORCE_WIDE
+    PLACEMENT, FORCE_WIDE = args.placement, args.wide
     r = json.load(open(args.analysis))
     if args.layout == "compact":
         tables = [compact(r, args.what, args.suffix)]
     elif args.layout == "cmmd":
         tables = [cmmd(r, json.load(open(args.adapted)), args.what, args.suffix)]
+    elif args.layout == "cmmd_view":
+        tables = [cmmd_view(r, json.load(open(args.adapted)), args.what, args.suffix)]
+    elif args.layout == "transfer":
+        tables = [transfer(r, args.what, args.suffix)]
     elif args.layout == "e10":
         tables = [e10(r, args.suffix)]
     else:

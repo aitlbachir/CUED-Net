@@ -51,6 +51,13 @@ def macros(r, tag):
                           ("ece", "Ece"), ("ece_cal", "EceCal"), ("aurc", "Aurc"), ("eaurc", "Eaurc"), ("error_auroc", "ErrAuroc")):
             out[p + name] = ci(s[key])
         out[p + "AucPt"] = num(s["auc"]["value"])
+        out[p + "Acc"] = num(s["accuracy"]["value"])
+        # Extremes over the comparator scores of this arm, for statements that concern every method.
+        comps = list(a["comparison"].get("aurc", {}))
+        if comps:
+            out[p + "CmpAccMax"] = num(max(r["summary"][c]["accuracy"]["value"] for c in comps))
+            err = [r["summary"][c]["error_auroc"]["value"] for c in comps]
+            out[p + "CmpErrAurocMin"], out[p + "CmpErrAurocMax"] = num(min(err)), num(max(err))
         for c in (70, 80, 90):
             word = {70: "Seventy", 80: "Eighty", 90: "Ninety"}[c]
             out[p + "SensAcc" + word] = num(s[f"sens_accepted_{c}"]["value"])
@@ -146,6 +153,21 @@ def response_macros(r, tag):
     return out
 
 
+SALIENCY = {"all": "All", "correct": "Correct", "error": "Error", "tercile_0": "TercLow", "tercile_1": "TercMid", "tercile_2": "TercHigh",
+            "view_cc": "Cc", "view_mlo": "Mlo"}
+
+
+def saliency_macros(r, tag):
+    """Grad-CAM against lesion masks from gradcam_p2.py: energy inside the mask, its ratio to the mask area, peak inside the mask."""
+    out = {tag + "SalRows": f"{r['n_rows']:,}".replace(",", "{,}")}
+    for group, name in SALIENCY.items():
+        s = r["summary"][group]
+        for metric, mname in (("energy", "Energy"), ("lift", "Lift"), ("hit", "Hit")):
+            out[tag + "Sal" + name + mname] = ci(s[metric])
+        out[tag + "Sal" + name + "Area"] = num(s["area"]["value"])
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--analysis", required=True)
@@ -153,6 +175,7 @@ def main():
     ap.add_argument("--anchor", default="", help="anchor_p2.py output")
     ap.add_argument("--response", default="", help="term_response_p2.py --summary output")
     ap.add_argument("--cost", default="", help="cost_p2.py output")
+    ap.add_argument("--saliency", default="", help="gradcam_p2.py summary")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     assert args.tag.isalpha() or not args.tag
@@ -163,6 +186,8 @@ def main():
         m.update(response_macros(json.load(open(args.response)), args.tag))
     if args.cost:
         m.update(cost_macros(json.load(open(args.cost)), args.tag))
+    if args.saliency:
+        m.update(saliency_macros(json.load(open(args.saliency)), args.tag))
     lines = [f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in sorted(m.items())]
     Path(args.out).write_text("% Written by evaluation/make_numbers.py. Do not edit by hand.\n" + "\n".join(lines) + "\n")
     print(len(lines), "macros")
