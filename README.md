@@ -2,137 +2,50 @@
 
 ### Cross-view Uncertainty-guided Evidential Dual-encoder Network for Breast Mass Classification in Mammography
 
-Official PyTorch implementation of **CUED-Net**, a dual-encoder evidential model
-that classifies breast masses from paired craniocaudal (CC) and mediolateral-oblique
-(MLO) mammographic views while producing a decomposed, interpretable estimate of
-predictive uncertainty.
+Code of the manuscript JBHI-00149-2026, *IEEE Journal of Biomedical and Health Informatics* (second revision, under review).
 
-> **Manuscript:** *IEEE Journal of Biomedical and Health Informatics*,
-> ID `JBHI-00149-2026` (under review).
-
-> **R2 work in progress on this branch.** Protocol P2 entry points: `data/build_patchs.py`,
-> `data/build_p2_manifest.py`, `training/train_p2.py`, `training/run_queue.py`,
-> `evaluation/p2_analysis.py`, `evaluation/evaluate_test.py`, `ANALYSIS_PLAN.md`.
-> The code reviewed in R1 stays on `main`, commit 95d92c3. R1 scripts still on this branch
-> are being replaced and do not run against the corrected models.
-
----
-
-## Overview
-
-CUED-Net encodes each view with an independent DenseNet-121 backbone terminated by a
-Dirichlet **evidential** head, fuses the two views with an uncertainty-weighted
-scheme, and reports uncertainty as a decomposition rather than a single scalar:
-
-| Component | Symbol | Source | Availability |
-| --- | --- | --- | --- |
-| Evidential | `u_evid` | within-model (Dirichlet vacuity) | single forward pass |
-| View discordance | `u_disc` | between-view (CC vs. MLO) | single forward pass |
-| Ensemble | `u_ens` | between-model (seed variance) | ensemble only |
-
-At inference the model operates in **two tiers**:
-
-- **Single pass** — combined uncertainty `u_comb = u_evid + 0.5 · u_disc`
-  (two sources, no ensemble required).
-- **Ensemble** — adds a third source `u_ens = Var_m[p_mal]`, the cross-member
-  variance of the malignant-class probability, giving a total that weights the three
-  sources.
-
-The view-discordance term is defined on the view probability vectors as
-
-```
-u_disc = σ( ½ [ KL(p_CC ‖ p_MLO) + KL(p_MLO ‖ p_CC) ] ) ∈ (0.5, 1)
-```
-
-i.e. the sigmoid of the symmetric KL divergence between the two views' predictive
-distributions. It is near-orthogonal to the other two signals (|r| ≤ 0.07), a
-structural property of the dual-view architecture.
-
----
-
-## Key results (CBIS-DDSM, pooled 5×5 cross-validation)
-
-| Metric | CUED-Net |
+| Branch | Content |
 | --- | --- |
-| AUROC | 0.877 |
-| F1 | 0.834 |
-| Average precision | 0.852 |
+| `r2-protocol` (this branch) | Code, analysis plan and analysis outputs of the second revision |
+| `main` | Code reviewed in the first revision (commit `95d92c3`) |
 
-CUED-Net matches the discrimination of sampling- and ensemble-based uncertainty
-baselines (Deep-Ensemble, TMC) **at a single forward pass**, and its uncertainty
-supports selective prediction that is statistically indistinguishable from the
-strongest baselines on AURC — while uniquely decomposing total uncertainty into
-evidential, ensemble, and view-discordance components. Full comparisons, calibration,
-backbone ablation, learning curve, Grad-CAM case studies, and CMMD external
-validation are reported in the paper.
-
-*Note on the View Discordance Loss (VDL):* an auxiliary VDL training term was
-evaluated during development and **removed from the final model** (`λ_vdl = 0`) after
-cross-validation showed no significant benefit on discrimination, calibration, or
-high-discordance recall. `u_disc` is used at **inference** as an uncertainty signal;
-it is not a training loss in the released configuration.
+Scripts of the first revision that remain on this branch (`train_cv*.py`, `ablations/`, `stats_tests2.py`,
+`selective_prediction_2.py`, `cmmd_external_validation/` and the R1 plotting scripts) do not run against the
+corrected models and were not used for any result of the second revision.
 
 ---
 
-## Repository structure
+## Method
+
+CUED-Net encodes the craniocaudal (CC) and mediolateral-oblique (MLO) views of a breast with two encoders that do not
+share weights. Each encoder ends in an evidential head that gives Dirichlet parameters, a view probability `p_v` and a
+vacuity `u_v`. The fused probability is the evidence-weighted mean `p = sum_v w_v p_v`, with `w_v` proportional to `1 - u_v`.
+
+The entropy of the fused prediction splits exactly into three terms, for every case and in one forward pass:
 
 ```
-CUED-Net/
-├── models/                     Model definitions
-│   ├── cued_net.py               core dual-encoder evidential network + ensemble
-│   ├── view_encoder_backbone.py  backbone-swappable encoder (Table III ablation)
-│   ├── baseline_models.py        MC-Dropout, Deep-Ensemble baselines
-│   └── baseline_models_edl_tmc.py  TMC and single-view-EDL baselines
-├── data/                       Data pipeline
-│   ├── datasets.py               CBIS-DDSM CC+MLO pair dataset
-│   ├── cv_dataloaders.py         cross-validation dataloaders
-│   ├── cmmd_pair_dataset.py      CMMD external-validation dataset
-│   ├── build_cv_folds.py         StratifiedGroupKFold split generation
-│   ├── build_patchs.py           lesion-patch extraction
-│   ├── crop_cmmd_breast.py       CMMD breast-region cropping
-│   ├── build_cmmd_manifest.py       CMMD manifest (Kaggle-mirror layout)
-│   ├── build_cmmd_manifest_nbia.py  CMMD manifest (raw TCIA/NBIA layout)
-│   └── cv_folds.json             exact split used in the paper (for verification)
-├── training/                   Training entry points
-│   ├── train_cv.py               ★ paper protocol: 5-fold × 5-seed CV
-│   ├── train_cued_net.py         single-run demo
-│   ├── train_cv_baselines.py     MC-Dropout / Deep-Ensemble CV
-│   └── train_cv_baselines_edl_tmc.py  TMC / single-view-EDL CV
-├── ablations/                  Ablation harnesses
-│   ├── run_ablations.py          component ablation (λ_vdl=0, w/o consistency)
-│   ├── run_backbone_ablation.py  backbone comparison (Table III)
-│   ├── ablation_analysis.py      post-hoc analysis of ablation outputs
-│   └── run_learning_curve.py     learning curve (Figure 3)
-├── evaluation/                 Metrics & statistics
-│   ├── stats_tests2.py           DeLong, McNemar, bootstrap CIs (canonical)
-│   ├── delong_convnext_vs_densenet.py  backbone ΔAUC significance test
-│   ├── selective_prediction_2.py  AURC / E-AURC / selective-prediction analysis
-│   ├── dump_cued_decomposed.py   dump per-sample decomposed uncertainty
-│   ├── calibration_cbis.py       ECE / Brier / NLL
-│   ├── temperature_scaling.py    post-hoc temperature scaling
-│   ├── uncertainty_covariance.py  cross-signal Pearson correlations
-│   ├── cost_table.py             params / GMACs / latency / memory
-│   ├── roc_pr_curves.py          ROC and PR curves
-│   ├── seed_variance.py          per-seed F1 dispersion
-│   └── verify_mcnemar_roc.py     McNemar / ROC reconciliation checks
-├── cmmd_external_validation/   CMMD transfer
-│   ├── finetune_cmmd.py
-│   ├── evaluate_cmmd.py
-│   └── calibrate_cmmd.py
-├── visualization/              Figure generation
-│   ├── gradcam_cases.py          high-u_evid and high-u_disc Grad-CAM cases
-│   ├── gradcam_uens_case.py      high-u_ens ensemble Grad-CAM case
-│   ├── plot_figure3_learning_curve.py
-│   ├── plot_results_figure.py
-│   └── table_numbers.py
-├── tests/
-│   └── test_no_patient_leakage.py  asserts no patient crosses train/val folds
-├── results/                    Curated locked JSON summaries (small)
-├── figures/                    Example output figures
-├── requirements.txt
-├── CITATION.cff
-└── LICENSE
+H(p) = U_amb + U_evid + U_vd
+U_amb  = sum_v w_v E[H(theta_v)]                 within-view ambiguity
+U_evid = sum_v w_v (H(p_v) - E[H(theta_v)])      evidential uncertainty
+U_vd   = H(p) - sum_v w_v H(p_v)                 view discordance uncertainty (weighted Jensen-Shannon divergence)
 ```
+
+with `theta_v ~ Dir(alpha_v)`. The identity holds by construction and has no fitted weights
+(`evaluation/decomposition.py`). Referral ranks cases by `H(p)`.
+
+---
+
+## Protocol of the second revision
+
+- Analysis plan: `ANALYSIS_PLAN.md`, frozen at commit `bb08f67`. The rule for the case figure was fixed in `6d3ca32`.
+- CBIS-DDSM masses, CC and MLO pairs, patients grouped. Five frozen outer folds (`data/cv_folds.json`),
+  15% of each training pool as inner validation, five seeds (42, 123, 456, 789, 2024).
+- Each metric is computed per seed and then averaged over the seeds. Intervals come from a patient-clustered bootstrap
+  with B = 10,000; comparisons are CUED-Net minus comparator, with Holm correction.
+- Held-out split (CBIS-DDSM official test patients): models trained on the whole development pool (fold `-1`)
+  and evaluated once. The record of that evaluation is `results/r2/test_evaluation.lock.json`.
+- External cohort: CMMD, zero-shot and after adaptation of the heads, with adaptation and evaluation patients kept apart.
+- All settings reported in the paper are in `training/p2_config.py`.
 
 ---
 
@@ -141,145 +54,149 @@ CUED-Net/
 ```bash
 git clone https://github.com/aitlbachir/CUED-Net.git
 cd CUED-Net
-
-# PyTorch with CUDA 12.4 (adjust the CUDA suffix to your system)
-pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
+git checkout r2-protocol
+pip install torch==2.4.1 torchvision==0.19.1   # choose the wheel that matches your CUDA version
 pip install -r requirements.txt
 ```
 
-Verified on Python 3.11, CUDA 12.4, a single NVIDIA RTX 3090.
+Training and inference ran on Kaggle (NVIDIA T4 GPUs). The analysis scripts were last rerun on CPU with Python 3.12.10,
+numpy 2.5.4, pandas 3.1.1, scipy 1.18.1, scikit-learn 1.9.1 and matplotlib 3.11.2 (see "Checking the outputs" below).
+`evaluation/term_response_p2.py` imports torch even for `--summary`.
 
----
+Tests (`tests/test_no_patient_leakage.py` needs the `data/` folder on `PYTHONPATH`):
 
-## Data
-
-The paper uses two public datasets, neither of which is redistributed here:
-
-- **CBIS-DDSM** (training and cross-validation) — the Curated Breast Imaging Subset of
-  DDSM. After acquiring it, generate the CC+MLO pair manifest and folds:
-
-  ```bash
-  python data/build_patchs.py        # extract lesion patches
-  python data/build_cv_folds.py      # StratifiedGroupKFold, grouped by patient
-  ```
-
-  The exact split used in the paper is provided as `data/cv_folds.json` so results can
-  be reproduced against the identical partition. `tests/test_no_patient_leakage.py`
-  verifies that no patient appears in more than one fold.
-
-- **CMMD** (external validation) — the Chinese Mammography Database. Build the pair
-  manifest with whichever discovery path matches your download:
-
-  ```bash
-  # Kaggle-mirror directory layout (CMMD/D1-XXXX/...)
-  python data/build_cmmd_manifest.py
-
-  # raw TCIA/NBIA layout (flat SeriesInstanceUID directories)
-  python data/build_cmmd_manifest_nbia.py
-  ```
-
-Expected pair schema consumed by the datasets:
-
-```
-{ "patient_id", "cc_path", "mlo_path", "label" }   # label: benign=0, malignant=1
+```bash
+PYTHONPATH=data pytest tests
 ```
 
 ---
 
-## Training
+## Pipeline
 
-Reproduce the paper's cross-validated model (5 folds × 5 seeds):
-
-```bash
-python training/train_cv.py --data_root /path/to/cbis-ddsm --folds data/cv_folds.json
-```
-
-Quick single-run demo (one seed, no CV):
+### 1. Data (CBIS-DDSM and CMMD are public and are not redistributed here)
 
 ```bash
-python training/train_cued_net.py --data_root /path/to/cbis-ddsm
+python data/build_patchs.py --kaggle <CBIS-DDSM folder> --out <patches> --id_source study
+python data/build_p2_manifest.py --patches <patches> --train_csv <mass_case_description_train_set.csv> \
+    --test_csv <mass_case_description_test_set.csv> --frozen_folds data/cv_folds.json --out p2_manifest.json
+python data/build_lesion_masks.py --kaggle <CBIS-DDSM folder> --patch_report <patch report csv> --out masks
+python data/export_lesion_meta.py --train_csv <train csv> --test_csv <test csv> --out lesion_meta.csv
+python data/build_cmmd_p2.py --dicom_root <CMMD DICOM folder> --clinical_xlsx <CMMD clinical xlsx> --patches <cmmd patches> --out cmmd_p2.json
 ```
 
-Baselines:
+`results/r2/multi_mass.json` lists the pairs of breasts with more than one mass (used for a sensitivity analysis).
+
+### 2. Training (GPU)
+
+`training/run_queue.py` runs `training/train_p2.py` for every fold and seed of a list of jobs `<method>:cv`
+(outer folds 0 to 4) or `<method>:test` (fold -1, trained on the whole development pool):
 
 ```bash
-python training/train_cv_baselines.py          # MC-Dropout, Deep-Ensemble
-python training/train_cv_baselines_edl_tmc.py  # TMC, single-view-EDL
+python training/run_queue.py --jobs cued_net:cv,softmax_dual:cv,tmc:cv,sv_edl:cv,cross_view:cv,cued_net:test \
+    --manifest p2_manifest.json --patches <patches> --out runs
 ```
+
+Methods (`train_p2.py --method`): `cued_net` (DenseNet-121, evidence scale 1), `cued_convnext_k5` (ConvNeXt-T, scale 5;
+the reference ConvNeXt-T model), `cued_convnext` and `cued_net_k5` (the other scale), comparators `softmax_dual`, `tmc`,
+`sv_edl`, `cross_view` and their `_convnext` versions (the `softmax_dual` and `softmax_convnext`
+runs also write the MC-Dropout predictions, and Deep-Ensemble averages their five seed models of a fold), the earlier loss `cued_r1_kl`, and the robustness arms `cued_resnet50`, `cued_effnet_b0`,
+`cued_no_consistency`, `cued_vdl`. `evaluation/select_p2.py` applies the evidence-scale rule on inner validation only.
+
+### 3. Held-out split, CMMD, controlled changes, saliency and cost (GPU)
+
+```bash
+python evaluation/evaluate_test.py --manifest p2_manifest.json --patches <patches> --runs runs --out test --plan_commit bb08f67
+python evaluation/term_response_p2.py --manifest p2_manifest.json --patches <patches> --runs runs --out test --methods cued_net,cued_convnext_k5
+python evaluation/cmmd_p2.py --manifest cmmd_p2.json --patches <cmmd patches> --runs runs --out cmmd --phase both
+python evaluation/gradcam_p2.py --manifest p2_manifest.json --patches <patches> --masks masks --runs runs --out gradcam
+python evaluation/cost_p2.py --out cost.json
+```
+
+`evaluate_test.py` refuses to run twice unless a reason is given; the held-out split was evaluated once.
+
+### 4. Analyses and manuscript outputs (CPU)
+
+`evaluation/build_r2_outputs.py` holds the command behind every analysis file, macro file, table, figure and the
+graphical abstract. It works in a folder laid out as follows (prediction CSVs extracted from the run archives):
+
+```
+<root>/work/cv/runs/<method>/fold_<k>/seed_<s>/{inner_val,outer_val}.csv   outer folds, all methods
+<root>/work/heldout/<method>/fold_-1/seed_<s>/{inner_val,test}.csv          held-out split
+<root>/work/s6/test/...                                                      held-out controlled changes
+<root>/work/s6/cmmd/{zero_shot,adapted}/...                                  CMMD
+<root>/work/e10/runs/...                                                     robustness arms and cued_net
+<root>/work/pilot/response_dev/...                                           development controlled changes
+<root>/work/v4cost/cost.json, <root>/analysis/{lesion_meta.csv, multi_mass.json, case_keys.json, gradcam_summary.json}
+<root>/manuscript/cases/*.png                                                patches of the four cases of Fig. S2
+```
+
+```bash
+python evaluation/build_r2_outputs.py --root <root> --dry_run                  # print every command
+python evaluation/build_r2_outputs.py --root <root> --stage summaries          # bootstrap analyses (slow)
+python evaluation/build_r2_outputs.py --root <root> --stage derived manuscript # macros, tables, figures
+python evaluation/build_r2_outputs.py --root <root> --out_dir <check> --stage derived manuscript   # rebuild elsewhere to compare
+```
+
+Every number in the manuscript comes from a macro written by `evaluation/make_numbers.py`, and every table from
+`evaluation/make_tables.py`; no value is typed by hand.
 
 ---
 
-## Evaluation
+## Analysis outputs (`results/r2/`)
 
-```bash
-# Statistical comparisons (DeLong, McNemar, bootstrap CIs)
-python evaluation/stats_tests2.py --preds_dir <prediction_csv_dir>
+| File | Script | Content |
+| --- | --- | --- |
+| `an_cv_final.json` | `p2_analysis.py --split outer_val --multi_mass` | Outer folds: every method, comparisons, referral, view-term tests, dependence, calibration, net benefit |
+| `an_test.json` | `p2_analysis.py --split test` | Held-out split, same content |
+| `an_cmmd_{zero_shot,adapted}_{eval,mass}.json`, `an_cmmd_zero_shot_all.json` | `p2_analysis.py --split cmmd_eval / cmmd_mass / cmmd` | CMMD evaluation patients, mass-containing subset, all patients |
+| `e10_cv.json` | `e10_analysis.py` | Robustness arms (other encoders, no consistency term, earlier view discordance loss) |
+| `term_response_dev_summary.json`, `term_response_test_summary.json` | `term_response_p2.py --summary` | Response of the three terms to controlled changes |
+| `anchor_dev.json`, `anchor_test.json` | `anchor_p2.py` | Terms against the radiologists' descriptions of the two views |
+| `anchor_attributes_dev.json`, `anchor_attributes_test.json` | `anchor_attributes_p2.py` | Exploratory: the same test for each attribute |
+| `view_term_cued_convnext_cv.json`, `view_term_cued_convnext_test.json` | `view_term_p2.py` | Exploratory: view-term tests for ConvNeXt-T at evidence scale 1 |
+| `reliability_cv.json`, `reliability_test.json` | `reliability_p2.py` | Reliability bins (same arrays as the ECE) |
+| `per_seed_cv.json`, `per_seed_cv.csv` | `seed_table_p2.py` | Per-seed AUC, F1, AURC and fusion-weight percentiles |
+| `gradcam_summary.json` | `gradcam_p2.py` | Grad-CAM saliency against the lesion outline |
+| `cost.json` | `cost_p2.py` | Parameters, floating-point operations and latency |
+| `case_keys.json` | rule of `ANALYSIS_PLAN.md` (commit `6d3ca32`) | The four cases of Fig. S2 |
+| `multi_mass.json` | data preparation | Breasts with more than one mass |
+| `test_evaluation.lock.json` | `evaluate_test.py` | Record of the single held-out evaluation |
 
-# Selective prediction (AURC / E-AURC, patient-clustered bootstrap)
-python evaluation/selective_prediction_2.py --out results/selective
+The analyses marked exploratory were specified in writing before they were run and are labelled as exploratory in the
+Supplement.
 
-# Calibration and temperature scaling
-python evaluation/calibration_cbis.py
-python evaluation/temperature_scaling.py
+### Checking the outputs
 
-# Computational cost (params, GMACs, latency, memory)
-python evaluation/cost_table.py
-```
-
-Prediction-CSV schema (produced by the training scripts):
-
-```
-model, seed, fold, patient_id, label, prob_malignant, predicted, uncertainty
-```
-
-CUED-Net additionally emits `uncertainty_evidential`, `uncertainty_discordance`,
-`uncertainty_ensemble`, and `uncertainty_total`.
-
----
-
-## Ablations and figures
-
-```bash
-python ablations/run_ablations.py            # component ablation
-python ablations/run_backbone_ablation.py    # Table III (DenseNet vs. alternatives)
-python ablations/run_learning_curve.py       # Figure 3 data
-python visualization/plot_results_figure.py  # main results figure
-python visualization/gradcam_cases.py        # Grad-CAM case studies
-```
+On 16 November 2026, `build_r2_outputs.py --stage derived manuscript --out_dir <check>` reproduced byte for byte every
+macro file, table and figure used by the manuscript and the Supplement, the reliability and per-seed files, and the
+graphical abstract.
 
 ---
 
 ## Pretrained weights
 
-Trained checkpoints are **not** included in this repository. A representative
-5-fold checkpoint set will be published as a GitHub Release after peer review
-concludes. All reported metrics can be reproduced from scratch using the training
-scripts and the provided `cv_folds.json`.
+Trained checkpoints are not included. All results can be reproduced from the training scripts, the frozen folds and
+the settings in `training/p2_config.py`.
 
 ---
 
 ## Citation
 
-If you use this code, please cite:
-
 ```bibtex
 @article{aitlbachir2026cuednet,
   title   = {CUED-Net: Cross-view Uncertainty-guided Evidential Dual-encoder
              Network for Breast Mass Classification in Mammography},
-  author  = {Ait Lbachir, Ilhame and Daoudi, Imane and Nassih, Rym and Samiry, Imane},
+  author  = {Ait Lbachir, Ilhame and Daoudi, Imane and Nassih, Rym and Didast, Fatima Zahra},
   journal = {IEEE Journal of Biomedical and Health Informatics},
   year    = {2026},
   note    = {Under review, manuscript ID JBHI-00149-2026}
 }
 ```
 
----
-
 ## Acknowledgments
 
-Built with PyTorch and torchvision. Evidential learning follows the Dirichlet
-formulation of Sensoy et al. (NeurIPS 2018); the trusted multi-view baseline follows
-Han et al. (ICLR 2021). Grad-CAM visualizations follow Selvaraju et al. (ICCV 2017).
+Evidential learning follows Sensoy et al. (NeurIPS 2018); the trusted multi-view comparator follows Han et al. (ICLR 2021);
+the cross-view comparator follows van Tulder et al. (MICCAI 2021); Grad-CAM follows Selvaraju et al. (ICCV 2017).
 
 ## License
 

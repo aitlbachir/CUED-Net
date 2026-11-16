@@ -8,8 +8,8 @@ authors:
     given-names: "Imane"
   - family-names: "Nassih"
     given-names: "Rym"
-  - family-names: "Samiry"
-    given-names: "Imane"
+  - family-names: "Didast"
+    given-names: "Fatima Zahra"
 preferred-citation:
   type: article
   title: "CUED-Net: Cross-view Uncertainty-guided Evidential Dual-encoder Network for Breast Mass Classification in Mammography"
@@ -20,8 +20,8 @@ preferred-citation:
       given-names: "Imane"
     - family-names: "Nassih"
       given-names: "Rym"
-    - family-names: "Samiry"
-      given-names: "Imane"
+    - family-names: "Didast"
+      given-names: "Fatima Zahra"
   journal: "IEEE Journal of Biomedical and Health Informatics"
   year: 2026
   notes: "Manuscript ID JBHI-00149-2026 (under review)."
