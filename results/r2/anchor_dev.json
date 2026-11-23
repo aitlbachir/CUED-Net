@@ -59,6 +59,12 @@
    "error_other": 0.22490118577075102,
    "auc": 0.5695292849443047,
    "p": 0.2785
+  },
+  "exploratory_clearer_view_evidence": {
+   "n": 97,
+   "difference": 0.1179411484536082,
+   "share_positive": 0.5463917525773195,
+   "p": 0.1526
   }
  },
  "cued_convnext_k5": {
@@ -121,6 +127,12 @@
    "error_other": 0.18814229249011855,
    "auc": 0.5873158462091268,
    "p": 0.1668
+  },
+  "exploratory_clearer_view_evidence": {
+   "n": 97,
+   "difference": 0.5518166226804124,
+   "share_positive": 0.5773195876288659,
+   "p": 0.0293
   }
  }
 }

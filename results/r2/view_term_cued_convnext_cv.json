@@ -1,6 +1,7 @@
 {
  "method": "cued_convnext",
  "split": "outer_val",
+ "n_cases": 528,
  "B": 10000,
  "view_term": {
   "scores": {

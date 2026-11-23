@@ -28,13 +28,13 @@ def steps():
     add = lambda stage, out, script, *args: s.append((stage, out, script, list(args)))
     # Summaries of the outer folds, the held-out split and CMMD (plan sections 6 to 9).
     add("summaries", "manuscript/an_cv_final.json", E + "p2_analysis.py", "--runs", "work/cv/runs", "--split", "outer_val",
-        "--multi_mass", "analysis/multi_mass.json", "--B", "10000", "--B_added", "2000")
-    add("summaries", "manuscript/an_test.json", E + "p2_analysis.py", "--runs", "work/heldout", "--split", "test", "--B", "10000", "--B_added", "2000")
+        "--multi_mass", "analysis/multi_mass.json", "--B", "10000", "--B_added", "10000")
+    add("summaries", "manuscript/an_test.json", E + "p2_analysis.py", "--runs", "work/heldout", "--split", "test", "--B", "10000", "--B_added", "10000")
     for runs, split, name in [("zero_shot", "cmmd_eval", "zero_shot_eval"), ("zero_shot", "cmmd_mass", "zero_shot_mass"),
                               ("adapted", "cmmd_eval", "adapted_eval"), ("adapted", "cmmd_mass", "adapted_mass"),
                               ("zero_shot", "cmmd", "zero_shot_all")]:
         add("summaries", f"analysis/an_cmmd_{name}.json", E + "p2_analysis.py", "--runs", f"work/s6/cmmd/{runs}", "--split", split,
-            "--B", "10000", "--B_added", "2000")
+            "--B", "10000", "--B_added", "10000")
     add("summaries", "manuscript/e10_cv.json", E + "e10_analysis.py", "@REPO/evaluation", "work/e10/runs", "@OUT", "10000")
     # What each term measures (plan sections 12 and 13).
     add("summaries", "analysis/term_response_dev_summary.json", E + "term_response_p2.py", "--development", "--out", "work/pilot/response_dev", "--summary", "@OUT")
