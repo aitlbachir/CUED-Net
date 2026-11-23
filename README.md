@@ -2,6 +2,8 @@
 
 ### Cross-view Uncertainty-guided Evidential Dual-encoder Network for Breast Mass Classification in Mammography
 
+> **Second revision.** The code, the analysis plan and every analysis output of the second revision of manuscript JBHI-00149-2026 are on branch [`r2-protocol`](https://github.com/aitlbachir/CUED-Net/tree/r2-protocol). This page describes the first revision. In the second revision the fixed-weight uncertainty score and the ensemble branch were removed, and the entropy of the fused prediction is split exactly into within-view ambiguity, evidential uncertainty and view discordance uncertainty (see the README of `r2-protocol`).
+
 Official PyTorch implementation of **CUED-Net**, a dual-encoder evidential model
 that classifies breast masses from paired craniocaudal (CC) and mediolateral-oblique
 (MLO) mammographic views while producing a decomposed, interpretable estimate of
